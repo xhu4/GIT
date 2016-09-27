@@ -1,0 +1,89 @@
+%        File: ALAHW1.tex
+%     Created: Sun Sep 20 08:00 PM 2015 MDT
+% Last Change: Sun Sep 20 08:00 PM 2015 MDT
+%
+\documentclass[12pt]{article}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{euscript,fullpage,amssymb}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage[shortlabels]{enumitem}
+\usepackage{amsthm}
+\usepackage{siunitx}
+%\usepackage{listings}
+%\usepackage[bw,framed]{mcode}
+%\usepackage[letterpaper]{geometry}
+%\usepackage{graphicx}
+%\usepackage{float}
+%\geometry{
+%  inner=26mm,
+%}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\Q}{{\mathbb{Q}}}
+\newcommand{\sr}[1]{\sqrt{#1}}
+\newcommand{\vv}{\mathbf{v}}
+\newcommand{\ww}{\mathbf{w}}
+\newcommand{\0}{\mathbf{0}}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand\PP{\mathcal{P}}
+\newcommand\f{\frac}
+\newcommand\Nul{\mathrm{null}}
+\newcommand\Ran{\mathrm{range}}
+\newcommand\id{\mathrm{id}}
+\newcommand{\ids}[1]{\mathrm{id}_#1}
+
+\newcommand{\gp}[1]{\langle #1 \rangle}
+
+\newcommand\sse\subseteq
+\newcommand\sub\subset
+\newcommand\ssm\smallsetminus
+\renewcommand\L{\mathcal{L}}
+\newcommand{\pf}{\underline{\textit{Proof.}}}
+\newcommand{\fahrenheit}{\SIUnitSymbolDegree F}
+\renewcommand{\F}[1]{\SI{#1}{\fahrenheit}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{framed}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\setlength{\parskip}{0.125in}
+
+%\newcounter{problem}
+%\newcommand{\prob}{\noindent\stepcounter{problem}\arabic{problem}.~~}
+
+%\newcounter{subproblem}[problem]
+%\newcommand{\subprob}{\stepcounter{subproblem}(\alph{subproblem})\quad }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\centerline{\bf \Large MATH 5490 --- HPC-xTC}
+
+\bigskip
+\centerline{\large Home Work \#2 \qquad \textbf{Group 5} \textsc{Jorge Flores, Xiukun Hu, Grigorii Sarnitskii }}
+
+\section{Results}
+
+The multiplication result will be written to disk in file \textit{C.*.*}, and be printed on screen.
+
+\section{Requirement}
+
+Untar the folder and every file needed is inside. Use \texttt{make run} command to run it.
+
+\section{Compute Bound}
+
+For MacBook Pro with 2.7GHz Intel Core i5, 8G DDR3 memory, it gets compute bound when the block is over $50\times 50$.
+
+For Lenovo with 2.4GHz Intel Core i7, running in a 64bit Red Hat virtual machine, it gets compute bound when the block is over $50\times 50$.
+
+
+\end{document}
+
