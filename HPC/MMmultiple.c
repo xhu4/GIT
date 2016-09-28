@@ -50,6 +50,8 @@ int main(){
     int         i;              /* Loop index */
     int         j;              /* Loop index */
     int		k;              /* Loop index */
+    int		ir;             /* Loop index */
+    int		ic;             /* Loop index */
 
     double      t1;             /* Time keeper */
     double      t2;             /* Time keeper */
@@ -84,18 +86,22 @@ int main(){
 
 
     /* Loop over every block */
+    printf("Do you want to print C (yY or other)?");
+    c = getchar();
+    fflush( stdout );
+    opt_print = c == 'y' || c == 'Y';
     t1 = mrun();
     for ( i= 0 ; i < crows ; i++ )
 	for ( j = 0 ; j < ccols ; j++ ) {
 
 	    /* Initialize cblock */
-	    for ( int r = 0 ; r < blk_rows ; r++ )
-		for ( int c = 0 ; c < blk_cols ; c++ )
-		    cblock[r][c] = 0;
+	    for ( ir = 0 ; ir < blk_rows ; ir++ )
+		for ( ic = 0 ; ic < blk_cols ; ic++ )
+		    cblock[ir][ic] = 0;
 
 	    /* Do multiplication for block A(i,k) x B(k,j) */
 	    for ( k = 0 ; k < acols ; k++ ) {
-		block_readdisk( blk_rows, blk_cols, "A", i, k, ablock, mopt_a, 0 );
+		block_readdisk( blk_rows, blk_cols, "A", i, k, ablock, mopt_a, opt_print );
 		block_readdisk( blk_rows, blk_cols, "B", k, j, bblock, mopt_b, 0 );
 		tc1 = mrun();
 		block_multiply( blk_rows, blk_cols, ablock, bblock, cblock, 1 );

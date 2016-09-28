@@ -49,7 +49,7 @@ clean:
 	- /bin/rm -f *.o $(TARGET) $(TFILE) $(ZFILE)
 
 matrixclean:
-	- /bin/rm -f matrices.txt A.*.* B.*.* C.*.*
+	- /bin/rm -f matrices.txt A*.bin B*.bin C*.bin
 
 distclean:	clean matrixclean
 

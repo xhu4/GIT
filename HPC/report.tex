@@ -72,11 +72,17 @@
 
 \section{Results}
 
-The multiplication result will be written to disk in file \textit{C.*.*}, and be printed on screen.
+The code is capable with square blocks (i.e.~with \texttt{blk\_rows} and \texttt{blk\_cols} to be the same) and multiple blocks in A and B.
+The multiplication result will be written to disk in file(s) \texttt{C.*.*}, and can be printed on screen.
+
+The result is examed by \textsc{Matlab} for $100\times100$, $1000\times1000$ and $5000\times5000$ block multiplication. The absolute difference between two results is less than $1e-11$ for all tests.
+
+Total time spent for $5000\times5000$ matrices multiplication for this code is $1.37e3$ seconds and computing time is $1.36e3$ seconds, while for \textsc{Matlab} the computing time is only $4.28$ seconds.
+
 
 \section{Requirement}
 
-Untar the folder and every file needed is inside. Use \texttt{make run} command to run it.
+Unzip the folder and every file needed is inside. Use \texttt{make run} command to run it.
 
 \section{Compute Bound}
 

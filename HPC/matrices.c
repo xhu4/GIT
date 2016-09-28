@@ -181,7 +181,7 @@ int block_filename( char* mname, int row, int col, char* file_name,
         }
 
     /* Construct the disk file name */
-    sprintf( file_name, "%s.%d.%d", mname, row, col );
+    sprintf( file_name, "%s_%d_%d.bin", mname, row, col );
     return 0;
     }
 
@@ -562,6 +562,7 @@ int block_generate( int blk_rows, int blk_cols,
         for ( p = pb, i = 0 ; i < blk_rows ; i++ )
             for ( pr = mptr[i], j = 0 ; j < blk_cols ; j++ )
                 *pr++ = *p++;
+	free(pb);
         }
 
     /* Completed successfully */
