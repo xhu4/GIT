@@ -22,28 +22,31 @@
 ###############################################################################
 
 SHELL = /bin/sh
-PROJECT = hw1
+PROJECT = G5hw1
 
 TARGET = MMmultiple
 CFLAGS = -g
-LFLAGS = -g
+LFLAGS = -g -Wall
+FLAGS  = -fopenmp
+CC     = gcc-6
 
 TFILE = $(PROJECT).tgz
 ZFILE = $(PROJECT).zip
-PACKFILES = Makefile matrices.h matrices.c mkmatrices.c mkmatrices.h MMmultiple.c timer.c
+PACKFILES = Makefile matrices.h matrices.c mkmatrices.c mkmatrices.h MMmultiple.c timer.c report.pdf
 
 all:	$(TARGET)
 
 run:	all
 	- ./$(TARGET)
 
-MMmultiple.o: 	mkmatrices.c mkmatrices.h Makefile
+MMmultiple.o: 	MMmultiple.c mkmatrices.o Makefile
+	$(CC) $(LFLAGS) -c -fopenmp MMmultiple.c
 matrices.o:	matrices.c matrices.h Makefile
-mkmatrices.o:	mkmatrices.c mkmatrices.h matrices.h Makefile
+mkmatrices.o:	mkmatrices.c mkmatrices.h matrices.o Makefile
 timer.o:	timer.c
 
 $(TARGET):	$(TARGET).o mkmatrices.o matrices.o timer.o Makefile
-	$(CC) $(LFLAGS) -o $(TARGET) $(TARGET).o mkmatrices.o matrices.o timer.o
+	$(CC) $(LFLAGS) $(FLAGS) -o $(TARGET) $(TARGET).o mkmatrices.o matrices.o timer.o
 
 clean:
 	- /bin/rm -f *.o $(TARGET) $(TFILE) $(ZFILE)
@@ -56,6 +59,9 @@ distclean:	clean matrixclean
 pack:
 	tar zcvf $(TFILE) $(PACKFILES)
 	zip -r $(ZFILE) $(PACKFILES)
+
+CC:
+	echo $(CC)
 
 ###############################################################################
 #
