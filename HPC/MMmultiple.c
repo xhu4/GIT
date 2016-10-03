@@ -1,4 +1,4 @@
-/*
+/* Hi, everybody!
  * =====================================================================================
  *
  *       Filename:  MMmultiple.c
@@ -18,6 +18,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 #include "mkmatrices.h"
 
 
@@ -92,6 +93,7 @@ int main(){
     opt_print = c == 'y' || c == 'Y';
     t1 = mrun();
     for ( i= 0 ; i < crows ; i++ )
+
 	for ( j = 0 ; j < ccols ; j++ ) {
 
 	    /* Initialize cblock */
