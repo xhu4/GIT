@@ -18,6 +18,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 #include "mkmatrices.h"
 
 
@@ -89,6 +90,9 @@ int main(){
     t1 = mrun();
 
     for ( i= 0 ; i < crows ; i++ ) {
+#pragma omp parallel for default(none) private(ablock, bblock, cblock, k, ir, ic) \
+			 firstprivate(i, crows, ccols, blk_rows, blk_cols, acols, mopt_a, mopt_b, mopt_c) \
+			 schedule(static,1) 
 	    for ( j = 0 ; j < ccols ; j++ ) {
 //	    int tid = omp_get_thread_num();
     /* Allocate 3 block matrices (one each for A, B and C) */
@@ -103,16 +107,16 @@ int main(){
 
 	    /* Do multiplication for block A(i,k) x B(k,j) */
 	    for ( k = 0 ; k < acols ; k++ ) {
+#pragma omp critical
 		{
 		block_readdisk( blk_rows, blk_cols, "A", i, k, ablock, mopt_a, 0 );
 		block_readdisk( blk_rows, blk_cols, "B", k, j, bblock, mopt_b, 0 );
 		}
-		tc1 = mrun();
 		block_multiply( blk_rows, blk_cols, ablock, bblock, cblock, 1 );
-		tc2 += mrun() - tc1;
 	    }
 
 	    /* Write cblock to disk and print it */
+#pragma omp critical
 	    block_write2disk( blk_rows, blk_cols, "C", i, j, cblock[0] );
 	    free(ablock);
 	    free(bblock);
@@ -120,9 +124,7 @@ int main(){
 	}
 }
     /* Time */
-    t2 = mrun() - t1;
-    printf( "Matrices multiplication done in %le seconds\n"
-	    "Compute Time is %le seconds\n\n", t2, tc2 );
+    printf( "Matrices multiplication done in %le seconds\n", t2, tc2);
 
     /* End */
     return 0;
