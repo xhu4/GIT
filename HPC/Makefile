@@ -24,19 +24,26 @@
 SHELL = /bin/sh
 PROJECT = G5hw1
 
-STARGET = MMmultiple
-TARGET = MMmultiple_parallel
+MATRIX = mkmatrices
+TARGET = MMmultiple
+STARGET= MMmultiple_serial
+
 CFLAGS = -g
-LFLAGS = -g 
-OMPFLAGS  = -fopenmp
+LFLAGS = -g -O3
+OMPFLAGS = -fopenmp
+
 CC     = gcc-6
 
 TFILE = $(PROJECT).tgz
 ZFILE = $(PROJECT).zip
 PACKFILES = Makefile matrices.h matrices.c mkmatrices.c mkmatrices.h MMmultiple_parallel.c timer.c report.pdf
 
-all: 	$(TARGET) $(STARGET)
 
+all: 	$(MATRIX) $(TARGET)
+
+matrix: $(MATRIX)
+	- ./$(MATRIX)
+	
 parallel: $(TARGET)
 
 serial:	$(STARGET)
@@ -47,20 +54,23 @@ runserial:	$(STARGET)
 run: 	parallel
 	- ./$(TARGET)
 	
-$(TARGET):	$(TARGET).o mkmatrices.o matrices.o timer.o Makefile
-	$(CC) $(LFLAGS) $(OMPFLAGS) -o $(TARGET) $(TARGET).o mkmatrices.o matrices.o timer.o
+$(TARGET):	$(TARGET).o matrices.o timer.o Makefile
+	$(CC) $(LFLAGS) $(OMPFLAGS) -o $(TARGET) $(TARGET).o matrices.o timer.o
 
-$(STARGET):	$(STARGET).o mkmatrices.o matrices.o timer.o Makefile
-	$(CC) $(LFLAGS) -o $(STARGET) $(STARGET).o mkmatrices.o matrices.o timer.o
+$(STARGET):	$(STARGET).o matrices.o timer.o Makefile
+	$(CC) $(LFLAGS) -o $(STARGET) $(STARGET).o matrices.o timer.o
 
-MMmultiple_parallel.o: matrices.h mkmatrices.h Makefile
-	$(CC) $(LFLAGS) -c $(OMPFLAGS) MMmultiple_parallel.c
+$(MATRIX): 	$(MATRIX).o timer.o matrices.o
 
-MMmultiple.o: 	mkmatrices.h Makefile
-	$(CC) $(LFLAGS) -c MMmultiple.c
+$(TARGET).o: 	MMmultiple.c matrices.h Makefile
+	$(CC) $(LFLAGS) -c $(OMPFLAGS) MMmultiple.c
 
-matrices.o:	matrices.h Makefile
-mkmatrices.o:	mkmatrices.h matrices.h Makefile
+$(STARGET).o:	MMmultiple.c matrices.h Makefile
+	$(CC) $(LFLAGS) -o $(STARGET).o -c MMmultiple.c
+
+matrices.o:	matrices.c matrices.h Makefile
+
+mkmatrices.o:	mkmatrices.c matrices.h Makefile
 
 
 clean:

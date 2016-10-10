@@ -16,10 +16,24 @@
  *
  * =====================================================================================
  */
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_num_threads() 1;
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
-#include "mkmatrices.h"
+#include "matrices.h"
 
+#define WIDTH 30
+
+void ClearMatrix( double *restrict *restrict matrix, int nrows, int ncols ) {
+    int i, j;
+    for ( i = 0 ; i < nrows ; i++ ) 
+	for ( j = 0 ; j < ncols ; j++ ) 
+	    matrix[i][j] = 0;
+}
 
 int main(){
     /* Local declarations */
@@ -35,41 +49,39 @@ int main(){
     int         blk_cols = 0;   /* Columns in a block */
     int         blk_rows = 0;   /* Rows    in a block */
 
-    double**    ablock;         /* Pointer to one block of A */
-    double**    bblock;         /* Pointer to one block of B */
-    double**	cblock;         /* Pointer to one block of C */
+    double *restrict *restrict ablock[2];  /* Pointer to one block of A */
+    double *restrict *restrict bblock[2];  /* Pointer to one block of B */
+    double *restrict *restrict cblock[2];  /* Pointer to one block of C */
+    double	cpblock;        /* Private pointer for saving results */
 
     int         mopt_a = 0;     /* How to allocate space in A blocks */
     int         mopt_b = 1;     /* How to allocate space in B blocks */
     int		mopt_c = 1;     /* How to allocate space in C blocks */
 
     char        c = ' ';        /* Input character */
-//    int         opt_print = 0;  /* Print block flag */
-    int		opt_gen = 0;    /* Generate Matrix flag */
 
-    int         i;              /* Loop index */
-    int         j;              /* Loop index */
-    int		k;              /* Loop index */
-    int		ir;             /* Loop index */
-    int		ic;             /* Loop index */
+    int		colleft;        /* Block columns residue by WIDTH */
+    
+    int         i = 0;          /* Loop index */
+    int         j = 0;          /* Loop index */
+    int		k = 0;          /* Loop index */
+    int		I,J,K;          /* Loop index */
+    int		iplus;          /* Loop index */
+    int		jplus;          /* Loop index */
+    int		kplus;          /* Loop index */
+    int		tog  = 0;       /* Toggle 0 1 */
+    int		ctog = 0;       /* Toggle for cblock */
 
+    int		ar;             /* ablock row index */
+    int		ac;             /* ablock col index */
+
+    int		nThreads;
+    
     double      t1;             /* Time keeper */
     double      t2;             /* Time keeper */
     double	tc1;            /* Compute time keeper */
     double	tc2 = 0;        /* Compute time keeper */
     double      mrun();         /* Get timing information */
-
-
-    /* Determine if generate A and B */
-    printf( "Generate A and B (yY or other)? " );
-    c = getchar();
-    fflush( stdout );    
-    opt_gen = c == 'y' || c == 'Y';
-    c = getchar();
-
-
-    /* Generate A and B by mkmatrices */
-    if ( opt_gen ) mkmatrices();
 
 
     /* Get matrix information from disk */
@@ -78,52 +90,102 @@ int main(){
 	    &brows, &bcols,
 	    &crows, &ccols );
 
-
-
-
-    /* Loop over every block */
-//    printf("Do you want to print C (yY or other)?");
-//    c = getchar();
-//    fflush( stdout );
-//    opt_print = c == 'y' || c == 'Y';
+    colleft = blk_cols % WIDTH;
+    int nI = blk_rows * (blk_cols / WIDTH);
+    int AC = blk_cols - colleft;
     t1 = mrun();
 
-    for ( i= 0 ; i < crows ; i++ ) {
-	    for ( j = 0 ; j < ccols ; j++ ) {
-//	    int tid = omp_get_thread_num();
-    /* Allocate 3 block matrices (one each for A, B and C) */
-    ablock = block_allocate( blk_rows, blk_cols, mopt_a );
-    bblock = block_allocate( blk_rows, blk_cols, mopt_b );
-    cblock = block_allocate( blk_rows, blk_cols, mopt_c );
 
-	    /* Initialize cblock */
-	    for ( ir = 0 ; ir < blk_rows ; ir++ )
-		for ( ic = 0 ; ic < blk_cols ; ic++ )
-		    cblock[ir][ic] = 0;
+    /* Allocate 6 block matrices (two each for A, B and C) */
+    ablock[0] = block_allocate( blk_rows, blk_cols, mopt_a );
+    bblock[0] = block_allocate( blk_rows, blk_cols, mopt_b );
+    cblock[0] = block_allocate( blk_rows, blk_cols, mopt_c );
+    ablock[1] = block_allocate( blk_rows, blk_cols, mopt_a );
+    bblock[1] = block_allocate( blk_rows, blk_cols, mopt_b );
+    cblock[1] = block_allocate( blk_rows, blk_cols, mopt_c );
 
-	    /* Do multiplication for block A(i,k) x B(k,j) */
-	    for ( k = 0 ; k < acols ; k++ ) {
-		{
-		block_readdisk( blk_rows, blk_cols, "A", i, k, ablock, mopt_a, 0 );
-		block_readdisk( blk_rows, blk_cols, "B", k, j, bblock, mopt_b, 0 );
+    ClearMatrix( cblock[0], blk_rows, blk_cols );
+    ClearMatrix( cblock[1], blk_rows, blk_cols );
+
+#pragma omp parallel default(none)  \
+    shared(blk_cols, blk_rows,	    \
+	    ablock, bblock, cblock, \
+	    mopt_a, mopt_b, mopt_c, \
+	    acols, crows, ccols, colleft, nI, nThreads, AC ) \
+    firstprivate( tog, ctog, i, j, k ) \
+    private( I, J, K, iplus, jplus, kplus, cpblock, ar, ac )
+    {
+#pragma omp single
+	{
+	nThreads = omp_get_num_threads();
+	    block_readdisk( blk_rows, blk_cols, "A", 0, 0, ablock[0], mopt_a, 0 );
+	    block_readdisk( blk_rows, blk_cols, "B", 0, 0, bblock[0], mopt_a, 0 );
+	} /* single thread reading A00 B00 */
+
+	while ( i < crows ){
+	    kplus = (k+1) % acols;
+	    jplus = (kplus==0)? ((j+1)%ccols) : j;
+	    iplus = (jplus==0 && kplus==0)? i+1 : i;
+
+#pragma omp single nowait
+	    {
+		if ( iplus < crows ) {
+		    block_readdisk( blk_rows, blk_cols, "A", iplus, kplus, ablock[1-tog], mopt_a, 0 );
+		    block_readdisk( blk_rows, blk_cols, "B", kplus, jplus, bblock[1-tog], mopt_b, 0 );
 		}
-		tc1 = mrun();
-		block_multiply( blk_rows, blk_cols, ablock, bblock, cblock, 1 );
-		tc2 += mrun() - tc1;
 	    }
 
-	    /* Write cblock to disk and print it */
-	    block_write2disk( blk_rows, blk_cols, "C", i, j, cblock[0] );
-	    free(ablock);
-	    free(bblock);
-	    free(cblock);
-	}
-}
-    /* Time */
+#pragma omp for nowait schedule(runtime)
+	    for ( I = 0 ; I < nI; I++ ) {
+		ar = I % blk_rows, ac = (I / blk_rows) * WIDTH;
+		for ( K = 0 ; K < blk_cols ; K++ ) {
+		    cpblock = 0;
+		    for ( J = 0 ; J < WIDTH ; J++ ) 
+		    cpblock += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
+
+#pragma omp atomic update
+		    cblock[ctog][ar][K] += cpblock;
+		}	
+	    }
+
+	    if ( colleft ) {
+#pragma omp for nowait schedule(runtime)
+		for ( ar = 0 ; ar < blk_rows ; ar++ ) {
+		    ac = AC;
+		    for ( K = 0 ; K < blk_cols ; K++ ) {
+			cpblock = 0;
+			for ( J = 0 ; J < colleft ; J++ ) 
+			    cpblock += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
+
+#pragma omp atomic update
+			cblock[ctog][ar][K] += cpblock;
+		    }
+		}
+	    }
+
+#pragma omp barrier
+
+	    if ( kplus==0 ) {
+#pragma omp single nowait
+		{
+		    block_write2disk( blk_rows, blk_cols, "C", i, j, cblock[ctog][0] );
+		    ClearMatrix( cblock[ctog], blk_rows, blk_cols );
+		} /* Write cblock: OMP single nowait */
+		ctog = 1-ctog;
+	    }
+
+	    tog = 1 - tog;
+	    i = iplus;
+	    j = jplus;
+	    k = kplus;
+	} /* While loop for blocks */
+    }
+
     t2 = mrun() - t1;
-    printf( "Matrices multiplication done in %le seconds\n"
-	    "Compute Time is %le seconds\n\n", t2, tc2 );
+    /* Time */
+    printf( "Matrices multiplication done in %le seconds\n", t2);
+    printf( "%d threads are used.\n", nThreads );
 
     /* End */
     return 0;
-}
+} 

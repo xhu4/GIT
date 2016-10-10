@@ -4,7 +4,7 @@
 #include "matrices.h"
 
 
-int mkmatrices () {
+int main () {
 
     /* Local declarations */
     int         acols = 0;      /* Block columns in A */
