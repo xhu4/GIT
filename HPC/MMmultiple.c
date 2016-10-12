@@ -28,7 +28,7 @@
 
 #define WIDTH 30
 
-void ClearMatrix( double *restrict *restrict matrix, int nrows, int ncols ) {
+void ClearMatrix( double** matrix, int nrows, int ncols ) {
     int i, j;
     for ( i = 0 ; i < nrows ; i++ ) 
 	for ( j = 0 ; j < ncols ; j++ ) 
@@ -49,9 +49,9 @@ int main(){
     int         blk_cols = 0;   /* Columns in a block */
     int         blk_rows = 0;   /* Rows    in a block */
 
-    double *restrict *restrict ablock[2];  /* Pointer to one block of A */
-    double *restrict *restrict bblock[2];  /* Pointer to one block of B */
-    double *restrict *restrict cblock[2];  /* Pointer to one block of C */
+    double **ablock[2];  /* Pointer to one block of A */
+    double **bblock[2];  /* Pointer to one block of B */
+    double **cblock[2];  /* Pointer to one block of C */
     double	cpblock;        /* Private pointer for saving results */
 
     int         mopt_a = 0;     /* How to allocate space in A blocks */
@@ -79,8 +79,11 @@ int main(){
     
     double      t1;             /* Time keeper */
     double      t2;             /* Time keeper */
-    double	tc1;            /* Compute time keeper */
-    double	tc2 = 0;        /* Compute time keeper */
+    double	tio1;           /* Private I/O time keeper */
+    double	tio2 = 0;       /* Private I/O time keeper */
+    double	tio  = 0;       /* I/O time keeper */
+    double	tc1;            /* Compute time */
+    double	tc   = 0;       /* Compute time */
     double      mrun();         /* Get timing information */
 
 
@@ -111,15 +114,19 @@ int main(){
     shared(blk_cols, blk_rows,	    \
 	    ablock, bblock, cblock, \
 	    mopt_a, mopt_b, mopt_c, \
-	    acols, crows, ccols, colleft, nI, nThreads, AC ) \
-    firstprivate( tog, ctog, i, j, k ) \
-    private( I, J, K, iplus, jplus, kplus, cpblock, ar, ac )
+	    acols, crows, ccols,    \
+	    colleft, nI, nThreads,  \
+	    tio, AC, tc1, tc ) \
+    firstprivate( tog, ctog, i, j, k, tio2 ) \
+    private( I, J, K, iplus, jplus, kplus, cpblock, ar, ac, tio1 )
     {
 #pragma omp single
 	{
+	    tio1 = mrun();
 	nThreads = omp_get_num_threads();
 	    block_readdisk( blk_rows, blk_cols, "A", 0, 0, ablock[0], mopt_a, 0 );
 	    block_readdisk( blk_rows, blk_cols, "B", 0, 0, bblock[0], mopt_a, 0 );
+	    tio2 += mrun() - tio1;
 	} /* single thread reading A00 B00 */
 
 	while ( i < crows ){
@@ -130,10 +137,15 @@ int main(){
 #pragma omp single nowait
 	    {
 		if ( iplus < crows ) {
+		    tio1 = mrun();
 		    block_readdisk( blk_rows, blk_cols, "A", iplus, kplus, ablock[1-tog], mopt_a, 0 );
 		    block_readdisk( blk_rows, blk_cols, "B", kplus, jplus, bblock[1-tog], mopt_b, 0 );
+		    tio2 += mrun() - tio1;
 		}
 	    }
+
+#pragma omp master
+	    tc1 = mrun();
 
 #pragma omp for nowait schedule(runtime)
 	    for ( I = 0 ; I < nI; I++ ) {
@@ -165,11 +177,16 @@ int main(){
 
 #pragma omp barrier
 
+#pragma omp master
+	    tc += mrun() - tc1;
+	    
 	    if ( kplus==0 ) {
 #pragma omp single nowait
 		{
+		    tio1 = mrun();
 		    block_write2disk( blk_rows, blk_cols, "C", i, j, cblock[ctog][0] );
 		    ClearMatrix( cblock[ctog], blk_rows, blk_cols );
+		    tio2 += mrun() - tio1;
 		} /* Write cblock: OMP single nowait */
 		ctog = 1-ctog;
 	    }
@@ -179,11 +196,15 @@ int main(){
 	    j = jplus;
 	    k = kplus;
 	} /* While loop for blocks */
+#pragma omp atomic update
+	tio += tio2;
     }
 
     t2 = mrun() - t1;
     /* Time */
     printf( "Matrices multiplication done in %le seconds\n", t2);
+    printf( "I/O time: %le seconds\n", tio );
+    printf( "Compute time: %le\n", tc );
     printf( "%d threads are used.\n", nThreads );
 
     /* End */

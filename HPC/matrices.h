@@ -24,7 +24,7 @@ int block_write2disk( int blk_rows, int blk_cols,
 
 int block_readdisk( int blk_rows, int blk_cols,
                     char* mname, int row, int col,
-                    double *restrict *restrict mptr, int mopt,
+                    double **mptr, int mopt,
                     int opt_print );
 
 double** block_allocate( int blk_rows, int blk_cols, int mopt );
