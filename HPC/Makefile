@@ -3,16 +3,14 @@
 # Makefile to produce a program to generate (random) matrices to disk and a
 # library to read and write the matrices
 #
-# Craig C. Douglas (ccd)
-#
-# History of modification:
-#   Wed Jun 22 17:54:43 AST 2011  ccd @ kaust
-#   Fri Jun 24 16:12:20 AST 2011  ccd @ kaust
+# Group 5: Grigorii, Jorge, Xiukun
 #
 # How to use this: from a terminal or command line window:
 #
 #   make                Compile and link all of the programs.
-#   make run            Like make, but also run the example program.
+#   make matrix		Create matrix to calculate.
+#   make run            Run the multiplication in parallel.
+#   make runserial	Run the multiplication in serial.
 #   make clean          Remove files related to making the example program.
 #   make matrixclean    Remove the blocks of the matrices and the description
 #                       of the matrix and block sizes.
@@ -32,14 +30,14 @@ CFLAGS = -g
 LFLAGS = -g -O3
 OMPFLAGS = -fopenmp
 
-CC     = gcc-6
+CC     = gcc
 
 TFILE = $(PROJECT).tgz
 ZFILE = $(PROJECT).zip
 PACKFILES = Makefile matrices.h matrices.c mkmatrices.c mkmatrices.h MMmultiple_parallel.c timer.c report.pdf
 
 
-all: 	$(MATRIX) $(TARGET)
+all: 	$(MATRIX) $(TARGET) $(STARGET)
 
 matrix: $(MATRIX)
 	- ./$(MATRIX)

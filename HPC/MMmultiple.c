@@ -20,6 +20,7 @@
 #include <omp.h>
 #else
 #define omp_get_num_threads() 1;
+#define omp_get_thread_num() 0;
 #endif
 
 #include <stdio.h>
@@ -37,6 +38,22 @@ void ClearMatrix( double** matrix, int nrows, int ncols ) {
 
 int main(){
     /* Local declarations */
+    double      t1;             /* Time keeper */
+    double      t2;             /* Time keeper */
+    double	tio1;           /* Private I/O time keeper */
+    double	tio2 = 0;       /* Private I/O time keeper */
+    double	tio  = 0;       /* I/O time keeper */
+    double	tc1;            /* Compute time */
+    double	tc   = 0;       /* Compute time */
+
+    double	cpblock;        /* Private pointer for saving results */
+
+    double      mrun();         /* Get timing information */
+
+    double	**ablock[2];    /* Pointer to one block of A */
+    double	**bblock[2];    /* Pointer to one block of B */
+    double	**cblock[2];    /* Pointer to one block of C */
+
     int         acols = 0;      /* Block columns in A */
     int         arows = 0;      /* Block rows    in A */
 
@@ -49,19 +66,12 @@ int main(){
     int         blk_cols = 0;   /* Columns in a block */
     int         blk_rows = 0;   /* Rows    in a block */
 
-    double **ablock[2];  /* Pointer to one block of A */
-    double **bblock[2];  /* Pointer to one block of B */
-    double **cblock[2];  /* Pointer to one block of C */
-    double	cpblock;        /* Private pointer for saving results */
-
     int         mopt_a = 0;     /* How to allocate space in A blocks */
     int         mopt_b = 1;     /* How to allocate space in B blocks */
     int		mopt_c = 1;     /* How to allocate space in C blocks */
 
-    char        c = ' ';        /* Input character */
-
     int		colleft;        /* Block columns residue by WIDTH */
-    
+
     int         i = 0;          /* Loop index */
     int         j = 0;          /* Loop index */
     int		k = 0;          /* Loop index */
@@ -69,22 +79,25 @@ int main(){
     int		iplus;          /* Loop index */
     int		jplus;          /* Loop index */
     int		kplus;          /* Loop index */
-    int		tog  = 0;       /* Toggle 0 1 */
-    int		ctog = 0;       /* Toggle for cblock */
+
+    int		tog  = 0;       /* Toggle for a&bblock */
+    int		ctog = 0;       /* Toggle for cblock   */
+
+    int		TID;            /* Thread ID */
 
     int		ar;             /* ablock row index */
     int		ac;             /* ablock col index */
+    int		rc;             
+    int		nI;
 
     int		nThreads;
-    
-    double      t1;             /* Time keeper */
-    double      t2;             /* Time keeper */
-    double	tio1;           /* Private I/O time keeper */
-    double	tio2 = 0;       /* Private I/O time keeper */
-    double	tio  = 0;       /* I/O time keeper */
-    double	tc1;            /* Compute time */
-    double	tc   = 0;       /* Compute time */
-    double      mrun();         /* Get timing information */
+
+    char        c = ' ';        /* Input character */
+
+
+    /* Timing t1-t2 */
+    t1  = mrun();
+    tc1 = mrun();
 
 
     /* Get matrix information from disk */
@@ -93,10 +106,11 @@ int main(){
 	    &brows, &bcols,
 	    &crows, &ccols );
 
-    colleft = blk_cols % WIDTH;
-    int nI = blk_rows * (blk_cols / WIDTH);
-    int AC = blk_cols - colleft;
-    t1 = mrun();
+
+    /* Preprocess message */
+    colleft = blk_cols % WIDTH;                 /* Colunms left for each block over WIDTH */
+    nI = blk_rows * (blk_cols / WIDTH);         /* Number of iterations for each block */
+    rc = blk_cols - colleft;                    /* The starting index of the residue column */
 
 
     /* Allocate 6 block matrices (two each for A, B and C) */
@@ -116,14 +130,15 @@ int main(){
 	    mopt_a, mopt_b, mopt_c, \
 	    acols, crows, ccols,    \
 	    colleft, nI, nThreads,  \
-	    tio, AC, tc1, tc ) \
+	    tio, rc, tc1, tc, t1 )  \
     firstprivate( tog, ctog, i, j, k, tio2 ) \
-    private( I, J, K, iplus, jplus, kplus, cpblock, ar, ac, tio1 )
+    private( TID, I, J, K, iplus, jplus, kplus, cpblock, ar, ac, tio1 )
     {
+	TID = omp_get_thread_num();
 #pragma omp single
 	{
 	    tio1 = mrun();
-	nThreads = omp_get_num_threads();
+	    nThreads = omp_get_num_threads();
 	    block_readdisk( blk_rows, blk_cols, "A", 0, 0, ablock[0], mopt_a, 0 );
 	    block_readdisk( blk_rows, blk_cols, "B", 0, 0, bblock[0], mopt_a, 0 );
 	    tio2 += mrun() - tio1;
@@ -135,6 +150,9 @@ int main(){
 	    iplus = (jplus==0 && kplus==0)? i+1 : i;
 
 #pragma omp single nowait
+	    tc += mrun()-tc1;
+
+#pragma omp single nowait
 	    {
 		if ( iplus < crows ) {
 		    tio1 = mrun();
@@ -144,18 +162,18 @@ int main(){
 		}
 	    }
 
-#pragma omp master
+#pragma omp single nowait
 	    tc1 = mrun();
 
-#pragma omp for nowait schedule(runtime)
+	    #pragma omp for nowait schedule(runtime)
 	    for ( I = 0 ; I < nI; I++ ) {
 		ar = I % blk_rows, ac = (I / blk_rows) * WIDTH;
 		for ( K = 0 ; K < blk_cols ; K++ ) {
 		    cpblock = 0;
 		    for ( J = 0 ; J < WIDTH ; J++ ) 
-		    cpblock += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
+			cpblock += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
 
-#pragma omp atomic update
+		    #pragma omp atomic update
 		    cblock[ctog][ar][K] += cpblock;
 		}	
 	    }
@@ -163,7 +181,7 @@ int main(){
 	    if ( colleft ) {
 #pragma omp for nowait schedule(runtime)
 		for ( ar = 0 ; ar < blk_rows ; ar++ ) {
-		    ac = AC;
+		    ac = rc;
 		    for ( K = 0 ; K < blk_cols ; K++ ) {
 			cpblock = 0;
 			for ( J = 0 ; J < colleft ; J++ ) 
@@ -177,11 +195,11 @@ int main(){
 
 #pragma omp barrier
 
-#pragma omp master
-	    tc += mrun() - tc1;
-	    
-	    if ( kplus==0 ) {
 #pragma omp single nowait
+	    tc += mrun() - tc1;
+
+#pragma omp single nowait
+	    if ( kplus==0 ) {
 		{
 		    tio1 = mrun();
 		    block_write2disk( blk_rows, blk_cols, "C", i, j, cblock[ctog][0] );
@@ -191,16 +209,20 @@ int main(){
 		ctog = 1-ctog;
 	    }
 
+#pragma omp single nowait
+	    tc1 = mrun();
+
 	    tog = 1 - tog;
 	    i = iplus;
 	    j = jplus;
 	    k = kplus;
 	} /* While loop for blocks */
-#pragma omp atomic update
+	#pragma omp atomic update
 	tio += tio2;
     }
 
     t2 = mrun() - t1;
+    tc += mrun() - tc1;
     /* Time */
     printf( "Matrices multiplication done in %le seconds\n", t2);
     printf( "I/O time: %le seconds\n", tio );
