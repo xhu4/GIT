@@ -23,11 +23,15 @@
 #define omp_get_thread_num() 0;
 #endif
 
+#define NTH 100
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "matrices.h"
 
+#ifndef WIDTH
 #define WIDTH 30
+#endif
 
 void ClearMatrix( double** matrix, int nrows, int ncols ) {
     int i, j;
@@ -38,13 +42,18 @@ void ClearMatrix( double** matrix, int nrows, int ncols ) {
 
 int main(){
     /* Local declarations */
+    double	tsc[NTH];
+    double	tsc1;
     double      t1;             /* Time keeper */
     double      t2;             /* Time keeper */
+    double	tt1;
+    double	tt;
     double	tio1;           /* Private I/O time keeper */
-    double	tio2 = 0;       /* Private I/O time keeper */
-    double	tio  = 0;       /* I/O time keeper */
+    double	tio  = 0;       /* Private I/O time keeper */
     double	tc1;            /* Compute time */
     double	tc   = 0;       /* Compute time */
+    double	tw1;            /* Wate time */
+    double	tw = 0;         /* Wate time */
 
     double	cpblock;        /* Private pointer for saving results */
 
@@ -94,12 +103,8 @@ int main(){
 
     char        c = ' ';        /* Input character */
 
-
-    /* Timing t1-t2 */
-    t1  = mrun();
-    tc1 = mrun();
-
-
+    tt1 = mrun();
+    
     /* Get matrix information from disk */
     matrix_info_read( &blk_rows, &blk_cols, 
 	    &arows, &acols, 
@@ -124,47 +129,69 @@ int main(){
     ClearMatrix( cblock[0], blk_rows, blk_cols );
     ClearMatrix( cblock[1], blk_rows, blk_cols );
 
-#pragma omp parallel default(none)  \
+
+
+    /* Enter parallel region */
+    #pragma omp parallel default(none)  \
     shared(blk_cols, blk_rows,	    \
 	    ablock, bblock, cblock, \
 	    mopt_a, mopt_b, mopt_c, \
 	    acols, crows, ccols,    \
 	    colleft, nI, nThreads,  \
-	    tio, rc, tc1, tc, t1 )  \
-    firstprivate( tog, ctog, i, j, k, tio2 ) \
-    private( TID, I, J, K, iplus, jplus, kplus, cpblock, ar, ac, tio1 )
+	    rc, t1, t2, tsc, tsc1)  \
+    firstprivate( tog, ctog, i, j, k, tio, tc, tw ) \
+    private( TID, I, J, K, iplus, jplus, kplus, cpblock, ar, ac, tio1, tc1, tw1 )
     {
+
+	#pragma omp single
+	{
+	nThreads = omp_get_num_threads();
+	t1  = mrun();
+	}
+
+	tc1 = t1;
+
 	TID = omp_get_thread_num();
-#pragma omp single
+
+	/* Single thread reading the A00 B00 for calculating */
+	#pragma omp single
 	{
 	    tio1 = mrun();
-	    nThreads = omp_get_num_threads();
+	    tc += tio1 - tc1;
 	    block_readdisk( blk_rows, blk_cols, "A", 0, 0, ablock[0], mopt_a, 0 );
 	    block_readdisk( blk_rows, blk_cols, "B", 0, 0, bblock[0], mopt_a, 0 );
-	    tio2 += mrun() - tio1;
-	} /* single thread reading A00 B00 */
+	    tc1 = mrun();
+	    tio += tc1 - tio1;
+	    printf("Thread %d reading A00 and B00 in %les\n", TID, tio);
+	} // single thread reading A00 B00 
 
+	/* Reading and calculating at the same time */
 	while ( i < crows ){
+	    
+	    /* Get next loop's index i+, j+ and k+ */
 	    kplus = (k+1) % acols;
 	    jplus = (kplus==0)? ((j+1)%ccols) : j;
 	    iplus = (jplus==0 && kplus==0)? i+1 : i;
 
-#pragma omp single nowait
-	    tc += mrun()-tc1;
-
-#pragma omp single nowait
+	    /* Single thread reading A_i+k+ & B_k+j+ */
+	    #pragma omp single nowait
 	    {
 		if ( iplus < crows ) {
 		    tio1 = mrun();
+		    tc += tio1 - tc1;
 		    block_readdisk( blk_rows, blk_cols, "A", iplus, kplus, ablock[1-tog], mopt_a, 0 );
 		    block_readdisk( blk_rows, blk_cols, "B", kplus, jplus, bblock[1-tog], mopt_b, 0 );
-		    tio2 += mrun() - tio1;
+		    tc1 = mrun();
+		    tio += tc1 - tio1;
 		}
 	    }
 
-#pragma omp single nowait
-	    tc1 = mrun();
 
+	    #pragma omp single nowait
+	    if ( i == 0 && j == 0 && k == 0 ) 
+		tsc1 = mrun();
+
+	    /* Multithreads calculating A_ik x B_kj */
 	    #pragma omp for nowait schedule(runtime)
 	    for ( I = 0 ; I < nI; I++ ) {
 		ar = I % blk_rows, ac = (I / blk_rows) * WIDTH;
@@ -178,8 +205,9 @@ int main(){
 		}	
 	    }
 
+	    /* Multithreads taking care of the residue */
 	    if ( colleft ) {
-#pragma omp for nowait schedule(runtime)
+		#pragma omp for nowait schedule(runtime)
 		for ( ar = 0 ; ar < blk_rows ; ar++ ) {
 		    ac = rc;
 		    for ( K = 0 ; K < blk_cols ; K++ ) {
@@ -187,47 +215,64 @@ int main(){
 			for ( J = 0 ; J < colleft ; J++ ) 
 			    cpblock += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
 
-#pragma omp atomic update
+			#pragma omp atomic update
 			cblock[ctog][ar][K] += cpblock;
 		    }
 		}
 	    }
 
-#pragma omp barrier
+	    tw1 = mrun();
+	    tc += tw1 - tc1;
 
-#pragma omp single nowait
-	    tc += mrun() - tc1;
+	    if ( i == 0 && j == 0 && k == 0 ) 
+		tsc[TID] = mrun();
+	    
+	    /* Barrier for reading A_i+k+ B_k+j+ and calculating A_ik x B_kj */
+	    #pragma omp barrier
 
-#pragma omp single nowait
+	    tc1 = mrun();
+	    tw += tc1 - tw1;
+
+	    /* Every thread check but single thread write to disk */
 	    if ( kplus==0 ) {
+		#pragma omp single nowait
 		{
 		    tio1 = mrun();
+		    tc += tio1 - tc1;
 		    block_write2disk( blk_rows, blk_cols, "C", i, j, cblock[ctog][0] );
 		    ClearMatrix( cblock[ctog], blk_rows, blk_cols );
-		    tio2 += mrun() - tio1;
-		} /* Write cblock: OMP single nowait */
-		ctog = 1-ctog;
+		    tc1 = mrun();
+		    tio += tc1 - tio1;
+		} // Write cblock: OMP single nowait
+
+		ctog = 1-ctog; // Every thread change ctog if k+ = 0.
 	    }
 
-#pragma omp single nowait
-	    tc1 = mrun();
-
+	    /* Every thread change to another ablock and bblock and update index */
 	    tog = 1 - tog;
 	    i = iplus;
 	    j = jplus;
 	    k = kplus;
 	} /* While loop for blocks */
-	#pragma omp atomic update
-	tio += tio2;
-    }
+	printf("Thread %d, compute for %les, io for %les, wait for %le\n", TID, tc, tio, tw);
 
-    t2 = mrun() - t1;
-    tc += mrun() - tc1;
-    /* Time */
-    printf( "Matrices multiplication done in %le seconds\n", t2);
-    printf( "I/O time: %le seconds\n", tio );
-    printf( "Compute time: %le\n", tc );
-    printf( "%d threads are used.\n", nThreads );
+	#pragma omp master
+	{
+	    t2 = mrun() - t1;
+	}
+
+    }// End of parallel region
+
+    printf("Time in parallel region: %les\n", t2);
+
+    for ( i = 1 ; i < nThreads ; i++ ) 
+	tsc[0] = (tsc[0] < tsc[i])? tsc[i] : tsc[0];
+
+    tt = mrun() - tt1;
+
+    /* Print time */
+    printf("Total time: %les\n", tt);
+    printf("Time for multiplying A00 x B00 in parallel: %le\n", tsc[0]-tsc1);
 
     /* End */
     return 0;
