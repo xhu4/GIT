@@ -20,7 +20,7 @@
 ###############################################################################
 
 SHELL = /bin/sh
-PROJECT = G5hw1
+PROJECT = G5hw2-3
 
 MATRIX = mkmatrices
 TARGET = MMultiple

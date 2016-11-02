@@ -13,7 +13,9 @@
 \usepackage[shortlabels]{enumitem}
 \usepackage{amsthm}
 \usepackage{siunitx}
-%\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
 %\usepackage[bw,framed]{mcode}
 %\usepackage[letterpaper]{geometry}
 %\usepackage{graphicx}
@@ -53,7 +55,8 @@
 
 \begin{document}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%% algblocks %%%%%%%%%%%%%%%%%%%%%%%%%
+\algblockdefx[omp]{OMP}{ENDOMP}[1]{\textbf{OMP #1}}[1]{\textbf{ENDOMP #1}}
 
 \setlength{\parskip}{0.125in}
 
@@ -70,7 +73,9 @@
 \bigskip
 \centerline{\large Home Work \#2 \qquad \textbf{Group 5} \textsc{Jorge Flores, Xiukun Hu, Grigorii Sarnitskii }}
 
-\section{Results}
+\section{Step 2}
+
+\subsection{Results}
 
 The code is capable with square blocks (i.e.~with \texttt{blk\_rows} and \texttt{blk\_cols} to be the same) and multiple blocks in A and B.
 The multiplication result will be written to disk in file(s) \texttt{C.*.*}, and can be printed on screen.
@@ -80,15 +85,195 @@ The result is examed by \textsc{Matlab} for $100\times100$, $1000\times1000$ and
 Total time spent for $5000\times5000$ matrices multiplication for this code is $1.37e3$ seconds and computing time is $1.36e3$ seconds, while for \textsc{Matlab} the computing time is only $4.28$ seconds.
 
 
-\section{Requirement}
+\subsection{Requirement}
 
 Unzip the folder and every file needed is inside. Use \texttt{make run} command to run it.
 
-\section{Compute Bound}
+\subsection{Compute Bound}
 
 For MacBook Pro with 2.7GHz Intel Core i5, 8G DDR3 memory, it gets compute bound when the block is over $50\times 50$.
 
 For Lenovo with 2.4GHz Intel Core i7, running in a 64bit Red Hat virtual machine, it gets compute bound when the block is over $50\times 50$.
+
+\section{Step 3}
+
+\subsection{Algorithm}
+
+The pseudocode is as follow:
+\newpage
+\begin{algorithmic}
+    \OMP {PARALLEL}
+    \OMP {single}
+    \State $ablock[tog] \gets READ(A\_0\_0)$ \Comment{tog initialized as 0}
+    \State $bblock[tog] \gets READ(B\_0\_0)$	
+    \ENDOMP{single}\Comment{Implicit barrier here}
+
+    \While{$i <$ rows of blocks in C}
+    \OMP{single nowait}
+    \State $ablock[1-tog] \gets $READ(next $A$ block)
+    \State $bblock[1-tog] \gets $READ(next $B$ block)
+    \ENDOMP{single nowait}
+
+    \OMP{for nowait dynamic}
+    \For{every continuous $WIDTH$ (macro) elements in ablock}
+    \For{each column of B}
+    \State $temp += WIDTH \text{ elements of }ablock[tog] * WIDTH\text{ rows of }bblock[tog]$
+
+    \OMP{atomic update}
+    \State $cblock[ctog]$ corresponding element $+= temp$
+    \ENDOMP{atomic update}
+    \EndFor
+    \EndFor
+    \ENDOMP{for nowait dynamic}
+
+    \If{$blk\_cols$ cannot be divided by WIDTH}
+    \OMP{for nowait dynamic}
+    \For {each row of the remainder columns in ablock[tog]}
+    \State update $cblock[ctog]$
+    \EndFor
+    \ENDOMP{for nowait dynamic}
+    \EndIf
+
+    \textbf{OMP BARRIER}
+
+    \If{$k$ == columns of blocks in $A$}
+    \OMP{single nowait}
+    \State WRITE $cblock[ctog]$
+    \State fill $cblock[ctog]$ with zeros
+    \ENDOMP{single nowait}
+    \State $ctog = 1 - ctog$
+    \EndIf
+
+    \State $tog = 1 - tog$
+
+    \State update $i, j, k$ to point to next block in $A$ and $B$;
+    \EndWhile
+
+    \ENDOMP{PARALLEL}
+
+\end{algorithmic}
+\subsection{Results}
+
+The code works for square blocks (i.e.~with \texttt{blk\_rows} and \texttt{blk\_cols} being equal) and multiple blocks in A and B.
+The multiplication result will be written to disk in file(s) of the form \texttt{C.*.*}.
+
+The result was verified to be correct using \textsc{Matlab} for $1000\times1000$ block size and $10\times10$ blocks matrix multiplication. \\
+
+We performed a one dimensional analysis on the performance of our code using different block sizes and block matrix sizes. These tests where performed on an Intel(R) Xeon(R) CPU E5-4650 @2.70GHz with 8 cores and 2 threads per core (for a total of 16 threads). The results are summarized in the table below, were the total time represents the time it took our code to multiply the matrices and write the resulting blocks of $C$ to disk.
+
+\begin{center}
+
+    \begin{tabular}{|p{2cm}| |p{2cm}||p{3cm}|}
+	\hline
+	\multicolumn{3}{|c|}{Block/Matrix Size Analysis} \\
+	\hline
+	Block Size& Block Matrix Size &Total Time (seconds)  \\
+	\hline
+	100x100 & 1x1 &  $1.130199\times10^{-2}$   \\
+	&  &    \\
+
+	100x100& 2x2& $5.166101\times10^{-2}$   \\ 
+
+	& &   \\
+
+	100x100 & 5x5 & $6.825109\times10^{-1}$  \\
+
+	& &   \\
+
+	1000x1000 & 1x1 & $2.701371\times10^{-1}$    \\
+
+	& &  \\
+
+	1000x1000& 2x2 & $1.635549$   \\
+
+	& &  \\
+
+	1000x1000& 5x5 & $22.65355$   \\
+
+	\hline
+    \end{tabular}
+
+\end{center}
+
+It is obvious that the total time is $O(n^3)$.
+\bigskip
+
+We also performed a one dimensional analysis, this time focusing on the performance of our code using different thread numbers. These tests were performed on an Intel(R) Xeon(R) CPU E5-4650 @2.70GHz with 8 cores and 2 threads per core (for a total of 16 threads). The results are summarized in the table below.
+
+\begin{center}
+
+    \begin{tabular}{ |p{2cm}| |p{2cm}| |p{2cm}||p{3cm}|}
+	\hline
+	\multicolumn{4}{|c|}{Thread Number Analysis} \\
+	\hline
+	Number of Threads& Block Block Size &Block Matrix Size & Total Time (seconds)  \\
+	\hline
+	4 & 1000x1000 &  5x5& $43.33175$   \\
+	&  &  &  \\
+
+	8& 1000x1000& 5x5 & 22.61952   \\ 
+
+	& & &  \\
+
+	12 & 1000x1000 & 5x5 & 20.78736  \\
+
+	& & &  \\
+
+	16 & 1000x1000 & 5x5 & 23.37497    \\
+
+
+	\hline
+    \end{tabular}
+
+\end{center}
+
+We note that increasing the thread number from 4 threads to 8 threads, the total time nearly halved. However, changing from 8 to 12 and 16 threads, we see only a small change in the total time. This might be due to the fact that the system we used only has 8 physical cores.
+\subsection{Requirement}
+
+Unzip the folder called hw2.zip, every file needed to run the code is inside. Use \texttt{make matrix} to first generate and write to disk the matrices (block entries for each matrix) that will be used. (Notice that the block should be square.) Then use \texttt{make run} to multiply the matrices in parallel and write the resulting matrix (in blocks) to the disk. Alternatively, use \texttt{make runserial} to multiply the matrices in serial. 
+
+\subsection{Compute Bound}
+
+For a MacBook Pro with 2.7GHz Intel Core i5, 8G DDR3 memory, compute bound is achieved when the block size is over $40\times 40$.
+
+\bigskip
+
+For a Lenovo with 2.4GHz Intel Core i7, running in a 64bit Red Hat virtual machine, compute bound is achieved when the block size is over $40\times 40$.
+
+\bigskip
+
+For an Intel(R) Core(TM) i3-6100U CPU @ 2.30GHz running Ubuntu, compute bound was achieved when the block size is over $50\times 50$. 
+
+
+\newpage
+
+The information is summarized in the following table:
+
+\begin{center}
+
+    \begin{tabular}{ |p{9cm}||p{3cm}|}
+	\hline
+	\multicolumn{2}{|c|}{Compute Bound Analysis} \\
+	\hline
+	System& Block Size \\
+	\hline
+	Intel(R) Core(TM) i7-4700MQ CPU @ 2.40Ghz
+	GNU bash, version 4.2.46(1)-release ($x86-64$-redhat-linux-gnu), 4 threads & above 40 x 40\\
+	&  \\
+	Intel(R) Core(TM) i3-6100U CPU @ 2.30GHz
+	gcc version 5.4.0 20160609 (Ubuntu 5.4.0-6ubuntu1~16.04.2)
+	& above 50 x 50 \\
+	& \\
+	2.7 GHz Intel Core i5 & above 40 x 40   \\
+	gcc-6 (Homebrew gcc 6.2.0) 6.2.0, OS X Sierra, 4 threads &  \\
+	\hline
+    \end{tabular}
+
+\end{center}
+
+
+
+
 
 
 \end{document}

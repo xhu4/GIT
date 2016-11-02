@@ -23,6 +23,23 @@
     #define omp_get_thread_num() 0;
 #endif
 
+/* Cache Info */
+#ifndef mc
+    #define mc 512
+#endif
+
+#ifndef kc
+    #define kc 256
+#endif
+
+#ifndef mr
+    #define mr 4
+#endif
+
+#ifndef nr
+    #define nr 4
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "matrices.h"
