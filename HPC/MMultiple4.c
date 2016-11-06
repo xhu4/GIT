@@ -57,6 +57,9 @@ void ClearMatrix( double** matrix, int nrows, int ncols ) {
 	    matrix[i][j] = 0;
 }
 
+void GEPB_OPT1(const double ** A_block, const int Acol, const double * B_rpanel_packed, double ** C_rpanel, const int blk_cols);
+void GEPP_BLK_VAR1(const double ** A_cpanel, const int Acol, const double ** B_rpanel, double ** C, const int blk_cols);
+
 int main(){
 
     /* Local declarations */
@@ -163,6 +166,7 @@ int main(){
     firstprivate( tog, ctog, i, j, k, tio, tc, tw ) \
     private( TID, I, J, K, iplus, jplus, kplus, temp, ar, ac, tio1, tc1, tw1 )
     {
+	double ** C_local = block_allocate( blk_rows, blk_cols, 1 );
 
 	#pragma omp single
 	{
@@ -214,32 +218,8 @@ int main(){
 
 	    /* Multithreads calculating A_ik x B_kj */
 	    #pragma omp for nowait schedule(dynamic)
-	    for ( I = 0 ; I < nI; I++ ) {
-		ar = I % blk_rows, ac = (I / blk_rows) * WIDTH;
-		for ( K = 0 ; K < blk_cols ; K++ ) {
-		    temp = 0;
-		    for ( J = 0 ; J < WIDTH ; J++ ) 
-			temp += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
-
-		    #pragma omp atomic update
-		    cblock[ctog][ar][K] += temp;
-		}	
-	    }
-
-	    /* Multithreads taking care of the residue */
-	    if ( colleft ) {
-		#pragma omp for nowait schedule(dynamic)
-		for ( ar = 0 ; ar < blk_rows ; ar++ ) {
-		    ac = rc;
-		    for ( K = 0 ; K < blk_cols ; K++ ) {
-			temp = 0;
-			for ( J = 0 ; J < colleft ; J++ ) 
-			    temp += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
-
-			#pragma omp atomic update
-			cblock[ctog][ar][K] += temp;
-		    }
-		}
+	    for ( I = 0 ; I < blk_cols ; I += kc ) {
+		GEPP_BLK_VAR1( (const double**)ablock[tog], I, (const double**)(bblock[tog]+I), C_local, blk_cols );
 	    }
 
 	    tw1 = mrun();
@@ -299,17 +279,18 @@ int main(){
     return 0;
 } 
 
-void GEPB_OPT1(const double ** A, const int Arow, const int Acol, const double * B_rpanel_packed, double ** C_rpanel, const int blk_cols) {
+void GEPB_OPT1(const double ** A_block, const int Acol, const double * B_rpanel_packed, double ** C_rpanel, const int blk_cols) {
     /* Local declarations */
     double  A_block_packed[mc][kc];             /* packed A_block stored in cache (hopefully) */
-    double  C_aux[mr][nr];
-    double  *ap, *bp;
+    double  C_aux;
+    const double  *ap, *bp;
+    double  *cp;
     int	    i,j,ii,jj,kk;                       /* loop index */
     int	    res;                                /* residue */
 
     /* Pack A_block into A_block_packed */
     for ( i = 0 ; i < mc ; i++ ) {
-	memcpy( (void *)(A_block_packed+i*kc), (void *)(A[Arow+i]+Acol), kc * sizeof(double) );
+	memcpy( (void *)(A_block_packed+i*kc), (void *)(A_block[i]+Acol), kc * sizeof(double) );
     }
 
     /* For each column */
@@ -320,35 +301,40 @@ void GEPB_OPT1(const double ** A, const int Arow, const int Acol, const double *
 	    /* Multiply */
 	    bp = (B_rpanel_packed + i*kc);
 	    for ( ii = 0 ; ii < mr ; ii++ ) {
+		cp = C_rpanel[j+ii]+i;
 		for ( jj = 0 ; jj < nr ; jj++ ) {
 		    for ( kk = 0 ; kk < kc ; kk++ ) 
-			C_aux[m] += A_block_packed[j+ii][kk] * B_rpanel_packed[n++];
+			C_aux += *(ap++) * *(bp++);
 		    /* Write to C */
-		    *(C_rpanel[j+ii]+i+jj) = C_aux[m++];
+		    *(cp++) += C_aux;
 		}
 	    }
 	}
     }
 }
 
-void GEPP_BLK_VAR1(const double ** A_panel, const double ** B_rpanel, double ** C, const int blk_cols) {
+void GEPP_BLK_VAR1(const double ** A_cpanel, const int Acol, const double ** B_rpanel, double ** C, const int blk_cols) {
     /* Local declarations */
-    double **	B_rpanel_packed;
-    double *	bp;
-    double B_temp[nr][kc];
-    int i,j;                                    /* loop index */
+    double  *B_rpanel_packed, *bp;
+    int	    i,j,k;                              /* loop index */
 
-    if ( (bp = (double *) malloc( blk_cols*kc * sizeof(double) )) == NULL ) {
+    if ( (B_rpanel_packed = (double *) malloc( blk_cols*kc * sizeof(double) )) == NULL ) {
 	perror("memory allocation for bp");
-	free(bp);
+	free(B_rpanel_packed);
     }
+
+    bp = B_rpanel_packed;
 
     /* Pack B_rpanel into B_rpanel_packed */
     for ( i = 0 ; i < blk_cols ; i += nr ) {
 	for ( j = 0 ; j < nr ; j++ ) {
 	    for ( k = 0 ; k < kc ; k++ ) {
-		B_temp[
+		*(bp++) = B_rpanel[k][i*nr+j];
 	    }
 	}
+    }
+
+    for ( i = 0 ; i < blk_cols ; i+=mc ) {
+	GEPB_OPT1( A_cpanel+i, Acol, B_rpanel_packed, C+i, blk_cols );
     }
 }
