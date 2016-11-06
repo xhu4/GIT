@@ -21,6 +21,7 @@
 #else
     #define omp_get_num_threads() 1;
     #define omp_get_thread_num() 0;
+    #define omp_get_max_threads() 1;
 #endif
 
 /* Cache Info */
@@ -42,6 +43,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "matrices.h"
 
 #ifndef WIDTH
@@ -296,3 +298,57 @@ int main(){
     /* End */
     return 0;
 } 
+
+void GEPB_OPT1(const double ** A, const int Arow, const int Acol, const double * B_rpanel_packed, double ** C_rpanel, const int blk_cols) {
+    /* Local declarations */
+    double  A_block_packed[mc][kc];             /* packed A_block stored in cache (hopefully) */
+    double  C_aux[mr][nr];
+    double  *ap, *bp;
+    int	    i,j,ii,jj,kk;                       /* loop index */
+    int	    res;                                /* residue */
+
+    /* Pack A_block into A_block_packed */
+    for ( i = 0 ; i < mc ; i++ ) {
+	memcpy( (void *)(A_block_packed+i*kc), (void *)(A[Arow+i]+Acol), kc * sizeof(double) );
+    }
+
+    /* For each column */
+    for ( i = 0 ; i < blk_cols ; i+=nr ) {
+	/* For each mr rows */
+	ap = A_block_packed[0];
+	for ( j = 0 ; j < mc ; j+=mr ) {
+	    /* Multiply */
+	    bp = (B_rpanel_packed + i*kc);
+	    for ( ii = 0 ; ii < mr ; ii++ ) {
+		for ( jj = 0 ; jj < nr ; jj++ ) {
+		    for ( kk = 0 ; kk < kc ; kk++ ) 
+			C_aux[m] += A_block_packed[j+ii][kk] * B_rpanel_packed[n++];
+		    /* Write to C */
+		    *(C_rpanel[j+ii]+i+jj) = C_aux[m++];
+		}
+	    }
+	}
+    }
+}
+
+void GEPP_BLK_VAR1(const double ** A_panel, const double ** B_rpanel, double ** C, const int blk_cols) {
+    /* Local declarations */
+    double **	B_rpanel_packed;
+    double *	bp;
+    double B_temp[nr][kc];
+    int i,j;                                    /* loop index */
+
+    if ( (bp = (double *) malloc( blk_cols*kc * sizeof(double) )) == NULL ) {
+	perror("memory allocation for bp");
+	free(bp);
+    }
+
+    /* Pack B_rpanel into B_rpanel_packed */
+    for ( i = 0 ; i < blk_cols ; i += nr ) {
+	for ( j = 0 ; j < nr ; j++ ) {
+	    for ( k = 0 ; k < kc ; k++ ) {
+		B_temp[
+	    }
+	}
+    }
+}
