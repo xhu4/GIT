@@ -78,13 +78,11 @@ int main(){
     double	tw1;            /* Wate time */
     double	tw = 0;         /* Wate time */
 
-    double	temp;        /* Private pointer for saving results */
-
     double      mrun();         /* Get timing information */
 
     double	**ablock[2];    /* Pointer to one block of A */
     double	**bblock[2];    /* Pointer to one block of B */
-    double	**cblock[2];    /* Pointer to one block of C */
+    double	***C_local;
 
     int         acols = 0;      /* Block columns in A */
     int         arows = 0;      /* Block rows    in A */
@@ -113,18 +111,14 @@ int main(){
     int		kplus;          /* Loop index */
 
     int		tog  = 0;       /* Toggle for a&bblock */
-    int		ctog = 0;       /* Toggle for cblock   */
 
     int		TID;            /* Thread ID */
 
-    int		ar;             /* ablock row index */
-    int		ac;             /* ablock col index */
-    int		rc;             
+    int		rc;
     int		nI;
 
     int		nThreads;
 
-    char        c = ' ';        /* Input character */
 
     
     tt1 = mrun();
@@ -145,38 +139,39 @@ int main(){
     /* Allocate 6 block matrices (two each for A, B and C) */
     ablock[0] = block_allocate( blk_rows, blk_cols, mopt_a );
     bblock[0] = block_allocate( blk_rows, blk_cols, mopt_b );
-    cblock[0] = block_allocate( blk_rows, blk_cols, mopt_c );
     ablock[1] = block_allocate( blk_rows, blk_cols, mopt_a );
     bblock[1] = block_allocate( blk_rows, blk_cols, mopt_b );
-    cblock[1] = block_allocate( blk_rows, blk_cols, mopt_c );
-
-    ClearMatrix( cblock[0], blk_rows, blk_cols );
-    ClearMatrix( cblock[1], blk_rows, blk_cols );
-
 
 
     /* Enter parallel region */
     #pragma omp parallel default(none)  \
     shared(blk_cols, blk_rows,	    \
-	    ablock, bblock, cblock, \
+	    ablock, bblock, C_local,\
 	    mopt_a, mopt_b, mopt_c, \
 	    acols, crows, ccols,    \
 	    colleft, nI, nThreads,  \
 	    rc, t1, t2, tsc, tsc1)  \
-    firstprivate( tog, ctog, i, j, k, tio, tc, tw ) \
-    private( TID, I, J, K, iplus, jplus, kplus, temp, ar, ac, tio1, tc1, tw1 )
+    firstprivate( tog, i, j, k, tio, tc, tw ) \
+    private( TID, I, J, K, iplus, jplus, kplus, tio1, tc1, tw1 )
     {
-	double ** C_local = block_allocate( blk_rows, blk_cols, 1 );
 
 	#pragma omp single
 	{
 	nThreads = omp_get_num_threads();
+	if ( (C_local = (double ***) malloc( nThreads * sizeof(double **) )) == NULL ) {
+	    perror("memory allocation for C_local");
+	    free(C_local);
+	}
 	t1  = mrun();
 	}
+
 
 	tc1 = t1; 
 
 	TID = omp_get_thread_num();
+
+	C_local[TID] = block_allocate( blk_rows, blk_cols, mopt_c);
+	ClearMatrix( C_local[TID], blk_rows, blk_cols );
 
 	/* Single thread reading the A00 B00 for calculating */
 	#pragma omp single
@@ -184,7 +179,7 @@ int main(){
 	    tio1 = mrun();
 	    tc += tio1 - tc1;
 	    block_readdisk( blk_rows, blk_cols, "A", 0, 0, ablock[0], mopt_a, 0 );
-	    block_readdisk( blk_rows, blk_cols, "B", 0, 0, bblock[0], mopt_a, 0 );
+	    block_readdisk( blk_rows, blk_cols, "B", 0, 0, bblock[0], mopt_b, 0 );
 	    tc1 = mrun();
 	    tio += tc1 - tio1;
 	    printf("Thread %d reading A00 and B00 in %les\n", TID, tio);
@@ -219,7 +214,7 @@ int main(){
 	    /* Multithreads calculating A_ik x B_kj */
 	    #pragma omp for nowait schedule(dynamic)
 	    for ( I = 0 ; I < blk_cols ; I += kc ) {
-		GEPP_BLK_VAR1( (const double**)ablock[tog], I, (const double**)(bblock[tog]+I), C_local, blk_cols );
+		GEPP_BLK_VAR1( (const double**)ablock[tog], I, (const double**)(bblock[tog]+I), C_local[TID], blk_cols );
 	    }
 
 	    tw1 = mrun();
@@ -227,7 +222,7 @@ int main(){
 
 	    if ( i == 0 && j == 0 && k == 0 ) 
 		tsc[TID] = mrun();
-	    
+
 	    /* Barrier for reading A_i+k+ B_k+j+ and calculating A_ik x B_kj */
 	    #pragma omp barrier
 
@@ -236,17 +231,25 @@ int main(){
 
 	    /* Every thread check but single thread write to disk */
 	    if ( kplus==0 ) {
-		#pragma omp single nowait
+		for ( I = 2 ; I <= nThreads ; I<<=1 ) {
+		    if ( ! (TID % I) ) 
+			if ( TID+I <= nThreads ) 
+			    for ( J = 0 ; J < blk_rows ; J++ ) 
+				for ( K = 0 ; K < blk_cols ; K++ ) 
+				    C_local[TID][J][K] += C_local[TID+I/2][J][K];
+		    #pragma omp barrier
+		}
+		ClearMatrix( C_local[TID], blk_rows, blk_cols );
+
+		#pragma omp master
 		{
 		    tio1 = mrun();
 		    tc += tio1 - tc1;
-		    block_write2disk( blk_rows, blk_cols, "C", i, j, cblock[ctog][0] );
-		    ClearMatrix( cblock[ctog], blk_rows, blk_cols );
+		    block_write2disk( blk_rows, blk_cols, "C", i, j, C_local[TID][0] );
 		    tc1 = mrun();
 		    tio += tc1 - tio1;
-		} // Write cblock: OMP single nowait
+		} // Write C: OMP master
 
-		ctog = 1-ctog; // Every thread change ctog if k+ = 0.
 	    }
 
 	    /* Every thread change to another ablock and bblock and update index */
@@ -281,34 +284,39 @@ int main(){
 
 void GEPB_OPT1(const double ** A_block, const int Acol, const double * B_rpanel_packed, double ** C_rpanel, const int blk_cols) {
     /* Local declarations */
-    double  A_block_packed[mc][kc];             /* packed A_block stored in cache (hopefully) */
-    double  C_aux;
-    const double  *ap, *bp;
-    double  *cp;
-    int	    i,j,ii,jj,kk;                       /* loop index */
-    int	    res;                                /* residue */
+    double  A_block_packed[mc*kc];              /* packed A_block stored in cache (hopefully) */
+    double  C_aux[mr*nr];
+    const double  *ap, *bp = B_rpanel_packed;
+    double  *cpa;
+    int	    i,j,k,M,N;                          /* Loop index */
+    int	    count=0;
 
     /* Pack A_block into A_block_packed */
     for ( i = 0 ; i < mc ; i++ ) {
 	memcpy( (void *)(A_block_packed+i*kc), (void *)(A_block[i]+Acol), kc * sizeof(double) );
     }
 
+    cpa = C_aux;
     /* For each column */
-    for ( i = 0 ; i < blk_cols ; i+=nr ) {
+    for ( N = 0 ; N < blk_cols ; N+=nr ) {
+	ap = A_block_packed;
+	bp = bp + count;
 	/* For each mr rows */
-	ap = A_block_packed[0];
-	for ( j = 0 ; j < mc ; j+=mr ) {
+	for ( M = 0 ; M < mc ; M+=mr ) {
 	    /* Multiply */
-	    bp = (B_rpanel_packed + i*kc);
-	    for ( ii = 0 ; ii < mr ; ii++ ) {
-		cp = C_rpanel[j+ii]+i;
-		for ( jj = 0 ; jj < nr ; jj++ ) {
-		    for ( kk = 0 ; kk < kc ; kk++ ) 
-			C_aux += *(ap++) * *(bp++);
-		    /* Write to C */
-		    *(cp++) += C_aux;
+	    for ( i = 0 ; i < mr ; i++ ) {
+		count = 0;
+		for ( j = 0 ; j < nr ; j++ ) {
+		    *cpa = *ap * bp[count++];
+		    for ( k = 1 ; k < kc ; k++ ) 
+			*cpa += *(ap+k) * *(bp+(count++));
+		    cpa++;
 		}
+		ap += kc;
 	    }
+	    for ( i = mr-1 ; i >= 0 ; i-- ) 
+		for ( j = nr-1 ; j >= 0 ; j-- ) 
+		    C_rpanel[M+i][N+j] += *(--cpa);
 	}
     }
 }
@@ -329,7 +337,7 @@ void GEPP_BLK_VAR1(const double ** A_cpanel, const int Acol, const double ** B_r
     for ( i = 0 ; i < blk_cols ; i += nr ) {
 	for ( j = 0 ; j < nr ; j++ ) {
 	    for ( k = 0 ; k < kc ; k++ ) {
-		*(bp++) = B_rpanel[k][i*nr+j];
+		*(bp++) = B_rpanel[k][i+j];
 	    }
 	}
     }
@@ -337,4 +345,5 @@ void GEPP_BLK_VAR1(const double ** A_cpanel, const int Acol, const double ** B_r
     for ( i = 0 ; i < blk_cols ; i+=mc ) {
 	GEPB_OPT1( A_cpanel+i, Acol, B_rpanel_packed, C+i, blk_cols );
     }
+    free(B_rpanel_packed);
 }

@@ -27,14 +27,14 @@ TARGET = MMultiple
 STARGET= MMultiple_serial
 
 CFLAGS = -g
-LFLAGS = -g -O3
+LFLAGS = -g
 OMPFLAGS = -fopenmp
 
 CC     = gcc
 
 TFILE = $(PROJECT).tgz
 ZFILE = $(PROJECT).zip
-PACKFILES = Makefile matrices.h matrices.c mkmatrices.c mkmatrices.h MMultiple_parallel.c timer.c report.pdf
+PACKFILES = Makefile matrices.h matrices.c $(MATRIX).c $(TARGET).c timer.c report.pdf
 
 
 all: 	$(MATRIX) $(TARGET) $(STARGET)
@@ -60,11 +60,11 @@ $(STARGET):	$(STARGET).o matrices.o timer.o Makefile
 
 $(MATRIX): 	$(MATRIX).o timer.o matrices.o
 
-$(TARGET).o: 	MMultiple.c matrices.h Makefile
-	$(CC) $(LFLAGS) -c $(OMPFLAGS) MMultiple.c
+$(TARGET).o: 	$(TARGET).c matrices.h Makefile
+	$(CC) $(LFLAGS) -c $(OMPFLAGS) $(TARGET).c
 
-$(STARGET).o:	MMultiple.c matrices.h Makefile
-	$(CC) $(LFLAGS) -o $(STARGET).o -c MMultiple.c
+$(STARGET).o:	$(TARGET).c matrices.h Makefile
+	$(CC) $(LFLAGS) -o $(STARGET).o -c $(TARGET).c
 
 matrices.o:	matrices.c matrices.h Makefile
 
