@@ -52,26 +52,27 @@ void GEPB_OPT1(const double ** A_block, const int Acol, const double * B_rpanel_
 	memcpy( (void *)(A_block_packed+i*kc), (void *)(A_block[i]+Acol), kc * sizeof(double) );
     }
 
+	    cpa = C_aux;
     /* For each column */
     for ( N = 0 ; N < blk_cols ; N+=nr ) {
 	ap = A_block_packed;
 	bp = bp + count;
 	/* For each mr rows */
 	for ( M = 0 ; M < mc ; M+=mr ) {
-	    cpa = C_aux;
 	    /* Multiply */
 	    for ( i = 0 ; i < mr ; i++ ) {
 		count = 0;
-		cp = C_rpanel[M+i]+N;
 		for ( j = 0 ; j < nr ; j++ ) {
 		    *cpa = *ap * bp[count++];
 		    for ( k = 1 ; k < kc ; k++ ) 
 			*cpa += *(ap+k) * *(bp+(count++));
-		    /* Write to C */
-		    *(cp++) += *(cpa++);
+		    cpa++;
 		}
 		ap += kc;
 	    }
+	    for ( i = mr-1 ; i >= 0 ; i-- ) 
+		for ( j = nr-1 ; j >= 0 ; j-- ) 
+	    C_rpanel[M+i][N+j] += *(--cpa);
 	}
     }
 }
@@ -150,7 +151,9 @@ int main(){
     for ( i = 0 ; i < n ; i += kc ) 
 	GEPP_BLK_VAR1((const double**)a,i,(const double**)(b+i),(double**)c,m);
     t2 = mrun() - t1;
+
     printf("Multiply %dx%d matrices in %f seconds\n",m,n,t2);
+    fflush(stdout);
 
 //    for ( i = 0 ; i < m ; i++ ) {
 //	for ( j = 0 ; j < m ; j++ )
