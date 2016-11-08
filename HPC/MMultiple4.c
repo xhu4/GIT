@@ -239,7 +239,6 @@ int main(){
 				    C_local[TID][J][K] += C_local[TID+I/2][J][K];
 		    #pragma omp barrier
 		}
-		ClearMatrix( C_local[TID], blk_rows, blk_cols );
 
 		#pragma omp master
 		{
@@ -250,6 +249,7 @@ int main(){
 		    tio += tc1 - tio1;
 		} // Write C: OMP master
 
+		ClearMatrix( C_local[TID], blk_rows, blk_cols );
 	    }
 
 	    /* Every thread change to another ablock and bblock and update index */

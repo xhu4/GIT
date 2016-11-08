@@ -17,19 +17,19 @@
  */
 
 #ifndef mc
-    #define mc 512
+#define mc 512
 #endif
 
 #ifndef kc
-    #define kc 256
+#define kc 256
 #endif
 
 #ifndef mr
-    #define mr 4
+#define mr 4
 #endif
 
 #ifndef nr
-    #define nr 4
+#define nr 4
 #endif
 
 #include <stdio.h>
@@ -43,7 +43,7 @@ void GEPB_OPT1(const double ** A_block, const int Acol, const double * B_rpanel_
     double  A_block_packed[mc*kc];              /* packed A_block stored in cache (hopefully) */
     double  C_aux[mr*nr];
     const double  *ap, *bp = B_rpanel_packed;
-    double  *cp,*cpa;
+    double  *cpa;
     int	    i,j,k,M,N;                          /* Loop index */
     int	    count=0;
 
@@ -52,7 +52,7 @@ void GEPB_OPT1(const double ** A_block, const int Acol, const double * B_rpanel_
 	memcpy( (void *)(A_block_packed+i*kc), (void *)(A_block[i]+Acol), kc * sizeof(double) );
     }
 
-	    cpa = C_aux;
+    cpa = C_aux;
     /* For each column */
     for ( N = 0 ; N < blk_cols ; N+=nr ) {
 	ap = A_block_packed;
@@ -72,7 +72,7 @@ void GEPB_OPT1(const double ** A_block, const int Acol, const double * B_rpanel_
 	    }
 	    for ( i = mr-1 ; i >= 0 ; i-- ) 
 		for ( j = nr-1 ; j >= 0 ; j-- ) 
-	    C_rpanel[M+i][N+j] += *(--cpa);
+		    C_rpanel[M+i][N+j] += *(--cpa);
 	}
     }
 }
@@ -144,20 +144,22 @@ int main(){
 	}
 
     for ( i = 0 ; i < m ; i++ )
-	for ( j = 0 ; j < n ; j++ )
-	    a[i][j]=(b[j][i]=i);
+	for ( j = 0 ; j < n ; j++ ) {
+	    a[i][j]=(i*5+j*j);
+	    b[j][i]=(10+i-j*2);
+	}
 
     t1 = mrun();
     for ( i = 0 ; i < n ; i += kc ) 
 	GEPP_BLK_VAR1((const double**)a,i,(const double**)(b+i),(double**)c,m);
     t2 = mrun() - t1;
 
-    printf("Multiply %dx%d matrices in %f seconds\n",m,n,t2);
-    fflush(stdout);
+//    printf("Multiply %dx%d matrices in %f seconds\n",m,n,t2);
+//    fflush(stdout);
 
-//    for ( i = 0 ; i < m ; i++ ) {
-//	for ( j = 0 ; j < m ; j++ )
-//	    printf("%8.2e ",c[i][j]);
-//	printf("\n");
-//    }
+    for ( i = 0 ; i < m ; i++ ) {
+	for ( j = 0 ; j < m ; j++ )
+	    printf("%8.2e ",c[i][j]);
+	printf("\n");
+    }
 }

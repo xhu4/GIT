@@ -27,7 +27,7 @@ TARGET = MMultiple
 STARGET= MMultiple_serial
 
 CFLAGS = -g
-LFLAGS = -g
+LFLAGS = -g -O4
 OMPFLAGS = -fopenmp
 
 CC     = gcc
