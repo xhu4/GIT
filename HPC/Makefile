@@ -23,7 +23,7 @@ SHELL = /bin/sh
 PROJECT = G5hw2-3
 
 MATRIX = mkmatrices
-TARGET = MMultiple
+TARGET = MMultiple4
 STARGET= MMultiple_serial
 
 CFLAGS = -g
