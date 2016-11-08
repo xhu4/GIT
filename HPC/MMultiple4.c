@@ -26,11 +26,11 @@
 
 /* Cache Info */
 #ifndef mc
-    #define mc 512
+    #define mc 8
 #endif
 
 #ifndef kc
-    #define kc 256
+    #define kc 8
 #endif
 
 #ifndef mr
