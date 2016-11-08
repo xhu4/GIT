@@ -20,21 +20,21 @@
 ###############################################################################
 
 SHELL = /bin/sh
-PROJECT = G5hw1
+PROJECT = G5hw2-3
 
 MATRIX = mkmatrices
-TARGET = MMmultiple
-STARGET= MMmultiple_serial
+TARGET = MMultiple
+STARGET= MMultiple_serial
 
 CFLAGS = -g
-LFLAGS = -g -O3
+LFLAGS = -g -O4
 OMPFLAGS = -fopenmp
 
 CC     = gcc
 
 TFILE = $(PROJECT).tgz
 ZFILE = $(PROJECT).zip
-PACKFILES = Makefile matrices.h matrices.c mkmatrices.c mkmatrices.h MMmultiple_parallel.c timer.c report.pdf
+PACKFILES = Makefile matrices.h matrices.c $(MATRIX).c $(TARGET).c timer.c report.pdf
 
 
 all: 	$(MATRIX) $(TARGET) $(STARGET)
@@ -60,11 +60,11 @@ $(STARGET):	$(STARGET).o matrices.o timer.o Makefile
 
 $(MATRIX): 	$(MATRIX).o timer.o matrices.o
 
-$(TARGET).o: 	MMmultiple.c matrices.h Makefile
-	$(CC) $(LFLAGS) -c $(OMPFLAGS) MMmultiple.c
+$(TARGET).o: 	$(TARGET).c matrices.h Makefile
+	$(CC) $(LFLAGS) -c $(OMPFLAGS) $(TARGET).c
 
-$(STARGET).o:	MMmultiple.c matrices.h Makefile
-	$(CC) $(LFLAGS) -o $(STARGET).o -c MMmultiple.c
+$(STARGET).o:	$(TARGET).c matrices.h Makefile
+	$(CC) $(LFLAGS) -o $(STARGET).o -c $(TARGET).c
 
 matrices.o:	matrices.c matrices.h Makefile
 

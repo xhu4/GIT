@@ -266,11 +266,8 @@ int block_write2disk( int blk_rows, int blk_cols,
                       double* pdata ) {
 
     /* Local declarations */
-    int         i;                          /* Loop index */
-    int         j;                          /* Loop index */
     int         bw;                         /* Records written */
     int         ww;                         /* Records to write */
-    double*     p;                          /* Pointer to a double */
 
     char        file_name[LEN_FILENAME];    /* Disk file name */
     FILE*       fp;                         /* File pointer */

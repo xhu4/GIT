@@ -17,13 +17,12 @@
  * =====================================================================================
  */
 #ifdef _OPENMP
-#include <omp.h>
+    #include <omp.h>
 #else
-#define omp_get_num_threads() 1;
-#define omp_get_thread_num() 0;
+    #define omp_get_num_threads() 1;
+    #define omp_get_thread_num() 0;
+    #define omp_get_max_threads() 1;
 #endif
-
-#define NTH 100
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,7 +40,10 @@ void ClearMatrix( double** matrix, int nrows, int ncols ) {
 }
 
 int main(){
+
     /* Local declarations */
+    const int	NTH = omp_get_max_threads();
+
     double	tsc[NTH];
     double	tsc1;
     double      t1;             /* Time keeper */
@@ -55,7 +57,7 @@ int main(){
     double	tw1;            /* Wate time */
     double	tw = 0;         /* Wate time */
 
-    double	cpblock;        /* Private pointer for saving results */
+    double	temp;        /* Private pointer for saving results */
 
     double      mrun();         /* Get timing information */
 
@@ -103,6 +105,7 @@ int main(){
 
     char        c = ' ';        /* Input character */
 
+    
     tt1 = mrun();
     
     /* Get matrix information from disk */
@@ -140,7 +143,7 @@ int main(){
 	    colleft, nI, nThreads,  \
 	    rc, t1, t2, tsc, tsc1)  \
     firstprivate( tog, ctog, i, j, k, tio, tc, tw ) \
-    private( TID, I, J, K, iplus, jplus, kplus, cpblock, ar, ac, tio1, tc1, tw1 )
+    private( TID, I, J, K, iplus, jplus, kplus, temp, ar, ac, tio1, tc1, tw1 )
     {
 
 	#pragma omp single
@@ -149,7 +152,7 @@ int main(){
 	t1  = mrun();
 	}
 
-	tc1 = t1;
+	tc1 = t1; 
 
 	TID = omp_get_thread_num();
 
@@ -192,31 +195,31 @@ int main(){
 		tsc1 = mrun();
 
 	    /* Multithreads calculating A_ik x B_kj */
-	    #pragma omp for nowait schedule(runtime)
+	    #pragma omp for nowait schedule(dynamic)
 	    for ( I = 0 ; I < nI; I++ ) {
 		ar = I % blk_rows, ac = (I / blk_rows) * WIDTH;
 		for ( K = 0 ; K < blk_cols ; K++ ) {
-		    cpblock = 0;
+		    temp = 0;
 		    for ( J = 0 ; J < WIDTH ; J++ ) 
-			cpblock += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
+			temp += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
 
 		    #pragma omp atomic update
-		    cblock[ctog][ar][K] += cpblock;
+		    cblock[ctog][ar][K] += temp;
 		}	
 	    }
 
 	    /* Multithreads taking care of the residue */
 	    if ( colleft ) {
-		#pragma omp for nowait schedule(runtime)
+		#pragma omp for nowait schedule(dynamic)
 		for ( ar = 0 ; ar < blk_rows ; ar++ ) {
 		    ac = rc;
 		    for ( K = 0 ; K < blk_cols ; K++ ) {
-			cpblock = 0;
+			temp = 0;
 			for ( J = 0 ; J < colleft ; J++ ) 
-			    cpblock += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
+			    temp += ablock[tog][ar][ac+J] * bblock[tog][ac+J][K];
 
 			#pragma omp atomic update
-			cblock[ctog][ar][K] += cpblock;
+			cblock[ctog][ar][K] += temp;
 		    }
 		}
 	    }
