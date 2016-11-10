@@ -22,6 +22,7 @@
 SHELL = /bin/sh
 PROJECT = G5hw2-3
 
+ATLAS  = atlasmm
 MATRIX = mkmatrices
 TARGET = MMultiple4
 STARGET= MMultiple_serial
@@ -32,12 +33,16 @@ OMPFLAGS = -fopenmp
 
 CC     = gcc
 
+LPATH = /usr/local/atlas/lib
+LIBFLAGS= -lcblas -latlas
+IPATH = /usr/local/atlas/include/
+
 TFILE = $(PROJECT).tgz
 ZFILE = $(PROJECT).zip
 PACKFILES = Makefile matrices.h matrices.c $(MATRIX).c $(TARGET).c timer.c report.pdf
 
 
-all: 	$(MATRIX) $(TARGET) $(STARGET)
+all: 	$(MATRIX) $(TARGET) $(STARGET) $(ATLAS)
 
 matrix: $(MATRIX)
 	- ./$(MATRIX)
@@ -45,6 +50,9 @@ matrix: $(MATRIX)
 parallel: $(TARGET)
 
 serial:	$(STARGET)
+
+atlas: $(ATLAS)
+	- ./$(ATLAS)
 
 runserial:	$(STARGET)
 	- ./$(STARGET)
@@ -59,6 +67,9 @@ $(STARGET):	$(STARGET).o matrices.o timer.o Makefile
 	$(CC) $(LFLAGS) -o $(STARGET) $(STARGET).o matrices.o timer.o
 
 $(MATRIX): 	$(MATRIX).o timer.o matrices.o
+
+$(ATLAS):	$(ATLAS).c timer.o Makefile
+	$(CC) $(ATLAS).c timer.o -L$(LPATH) $(LIBFLAGS) -I$(IPATH) -o $(ATLAS)
 
 $(TARGET).o: 	$(TARGET).c matrices.h Makefile
 	$(CC) $(LFLAGS) -c $(OMPFLAGS) $(TARGET).c
