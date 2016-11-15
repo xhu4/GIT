@@ -276,5 +276,125 @@ The information is summarized in the following table:
 
 
 
+
+	\section{Step 4}
+	
+	In order to further optimize our code by making it cache aware, we used the information presented in "Anatomy of High-Performance Matrix Multiplication" (Goto, Van de Geijn) to modify our algorithm. \\
+	
+	We proceeded to install the ATLAS software and compare the speeds of our code in step 3, the cache aware code, and ATLAS for multiplying two matrices. The results are presented in the following tables. \\
+	
+	
+	
+	\begin{center}
+		
+		\begin{tabular}{ |p{2cm}| |p{2cm}| |p{2cm}||p{3cm}||p{3cm}|}
+			\hline
+			\multicolumn{5}{|c|}{Multiplication Time Comparison } \\
+			\hline
+			Algorithm& Block Size &Block Matrix Size & Total Time (s) (1 Thread)& Total Time (s) (2 Threads)\\
+			\hline
+			Step 3 Code & 1024x1024 &  1x1& $2.493216$  & $1.35267$    \\
+			&  &  & & \\
+			
+			Cache Aware & 1024x1024& 1x1 &  $1.350122$ & $6.953728\times10^{-1}$   \\ 
+			
+			& & & & \\
+			
+			ATLAS & 1024x1024 & 1x1 & $1.91020\times10^{-1}$&  \\
+			
+			
+			\hline
+		\end{tabular}
+		
+	\end{center}
+	
+	
+	\begin{center}
+		
+		\begin{tabular}{ |p{2cm}| |p{2cm}| |p{2cm}||p{3cm}||p{3cm}|}
+			\hline
+			\multicolumn{5}{|c|}{Multiplication Time Comparison } \\
+			\hline
+			Algorithm& Block Size &Block Matrix Size & Total Time (s) (1 Thread)& Total Time (s) (2 Threads)\\
+			\hline
+			Step 3 Code & 1024x1024 &  2x2& $19.22521$  & $10.41158$    \\
+			&  &  & & \\
+			
+			Cache Aware & 1024x1024& 2x2 &  $8.220221$ & $4.329293$   \\ 
+			
+			& & & & \\
+			
+			ATLAS & 1024x1024 & 2x2 & $8.238590\times10^{-1}$&  \\
+			
+			
+			\hline
+		\end{tabular}
+		
+	\end{center}
+	
+	
+	
+	\begin{center}
+		
+		\begin{tabular}{ |p{2cm}| |p{2cm}| |p{2cm}||p{3cm}||p{3cm}|}
+			\hline
+			\multicolumn{5}{|c|}{Multiplication Time Comparison } \\
+			\hline
+			Algorithm& Block Size &Block Matrix Size & Total Time (s) (1 Thread)& Total Time (s) (2 Threads)\\
+			\hline
+			Step 3 Code & 2048x2048 &  1x1 & $24.71400$  & $13.03327$    \\
+			&  &  & & \\
+			
+			Cache Aware & 2048x2048& 1x1 &  $10.68876$ & $5.942914$   \\ 
+			
+			& & & & \\
+			
+			ATLAS & 2048x2048 & 1x1 & $9.003758\times10^{-1}$&  \\
+			
+			
+			\hline
+		\end{tabular}
+		
+	\end{center}
+	
+	
+	We note that, as expected, we see speed ups in the multiplication time, which become more noticeable as we increase the block size and the block matrix size.
+	
+	\section{Step 5}
+	
+	We compared the new cache aware code to the code in step 3 on Mt.Moran running 16 threads and varying the block size and block matrix size. The results are presented in the following table. \\
+	
+	\begin{center}
+		
+		\begin{tabular}{ |p{2cm}| |p{2cm}||p{3cm}||p{3cm}|}
+			\hline
+			\multicolumn{4}{|c|}{Mt. Moran Multiplication Time} \\
+			\hline
+			Block Size &Block Matrix Size & Time (Step 3 Code) (seconds) & Time (Cache Aware)(seconds) \\
+			\hline
+			5000x5000 &  1x1& $9.592001$& $4.721680$  \\
+			
+			&  &  &\\
+			
+			1000x1000& 5x5 & $10.41214$& $6.816274$  \\ 
+			
+			& & & \\
+			
+			10000x10000 & 1x1 & $73.35776$& $34.13861$  \\
+			
+			
+			
+			
+			\hline
+		\end{tabular}
+		
+	\end{center}
+	
+	From this data, we can observe a considerable speed up between the code in step 3 and the new cache aware code, as desired. 
+	
+	\section{References}
+	
+	Goto, K. and van de Geijn, 2008. Anatomy of high-performance matrix multiplication. $\textit{ACM Transactions on  Mathematical Software}$ 24, 3 (May), article 12. 
+	
 \end{document}
 
