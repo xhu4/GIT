@@ -42,7 +42,7 @@ ZFILE = $(PROJECT).zip
 PACKFILES = Makefile matrices.h matrices.c $(MATRIX).c $(TARGET).c timer.c report.pdf
 
 
-all: 	$(MATRIX) $(TARGET) $(STARGET) $(ATLAS)
+all: 	$(MATRIX) $(TARGET) $(STARGET)
 
 matrix: $(MATRIX)
 	- ./$(MATRIX)

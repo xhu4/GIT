@@ -275,7 +275,7 @@ int main(){
     tt = mrun() - tt1;
 
     /* Print matrix info */
-    printf("\nblk:%5dx%5d, matrix:%2dx%2d, %2dThreads\n",blk_rows,blk_cols,arows,acols,nThreads);
+    printf("\n|step4 code|\tblk:%5dx%5d, matrix:%2dx%2d, %2dThreads\n",blk_rows,blk_cols,arows,acols,nThreads);
     /* Print time */
     printf("Total time: %les\n", tt);
     printf("--------------------------------------------------------\n");
