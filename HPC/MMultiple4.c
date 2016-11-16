@@ -182,7 +182,7 @@ int main(){
 	    block_readdisk( blk_rows, blk_cols, "B", 0, 0, bblock[0], mopt_b, 0 );
 	    tc1 = mrun();
 	    tio += tc1 - tio1;
-	    printf("Thread %d reading A00 and B00 in %les\n", TID, tio);
+	    //printf("Thread %d reading A00 and B00 in %les\n", TID, tio);
 	} // single thread reading A00 B00 
 
 	/* Reading and calculating at the same time */
@@ -258,7 +258,7 @@ int main(){
 	    j = jplus;
 	    k = kplus;
 	} /* While loop for blocks */
-	printf("Thread %d, compute for %les, io for %les, wait for %le\n", TID, tc, tio, tw);
+	//printf("Thread %d, compute for %les, io for %les, wait for %le\n", TID, tc, tio, tw);
 
 	#pragma omp master
 	{
@@ -267,16 +267,19 @@ int main(){
 
     }// End of parallel region
 
-    printf("Time in parallel region: %les\n", t2);
+    //printf("Time in parallel region: %les\n", t2);
 
     for ( i = 1 ; i < nThreads ; i++ ) 
 	tsc[0] = (tsc[0] < tsc[i])? tsc[i] : tsc[0];
 
     tt = mrun() - tt1;
 
+    /* Print matrix info */
+    printf("\nblk:%5dx%5d, matrix:%2dx%2d, %2dThreads\n",blk_rows,blk_cols,arows,acols,nThreads);
     /* Print time */
     printf("Total time: %les\n", tt);
-    printf("Time for multiplying A00 x B00 in parallel: %le\n", tsc[0]-tsc1);
+    printf("--------------------------------------------------------\n");
+    //printf("Time for multiplying A00 x B00 in parallel: %le\n", tsc[0]-tsc1);
 
     /* End */
     return 0;
