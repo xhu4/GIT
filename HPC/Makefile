@@ -58,7 +58,7 @@ runserial:	$(STARGET)
 	- ./$(STARGET)
 
 run: 	parallel
-	- ./$(TARGET)
+	-@ ./$(TARGET)
 	
 $(TARGET):	$(TARGET).o matrices.o timer.o Makefile
 	$(CC) $(LFLAGS) $(OMPFLAGS) -o $(TARGET) $(TARGET).o matrices.o timer.o
