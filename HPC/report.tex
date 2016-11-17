@@ -228,7 +228,7 @@ We also performed a one dimensional analysis, this time focusing on the performa
 \end{center}
 
 We note that increasing the thread number from 4 threads to 8 threads, the total time nearly halved. However, changing from 8 to 12 and 16 threads, we see only a small change in the total time. This might be due to the fact that the system we used only has 8 physical cores.
-\subsection{Requirement}
+\subsection{Requirement}\label{requirement}
 
 Unzip the folder called hw2.zip, every file needed to run the code is inside. Use \texttt{make matrix} to first generate and write to disk the matrices (block entries for each matrix) that will be used. (Notice that the block should be square.) Then use \texttt{make run} to multiply the matrices in parallel and write the resulting matrix (in blocks) to the disk. Alternatively, use \texttt{make runserial} to multiply the matrices in serial. 
 
@@ -278,9 +278,11 @@ The information is summarized in the following table:
 
 
 	\section{Step 4}
+	\subsection{Algorithm}
 	
-	In order to further optimize our code by making it cache aware, we used the information presented in "Anatomy of High-Performance Matrix Multiplication" (Goto, Van de Geijn) to modify our algorithm. \\
+	In order to further optimize our code by making it cache aware, we used the information presented in "Anatomy of High-Performance Matrix Multiplication" (Goto, Van de Geijn)\cite{goto} to modify our algorithm. \\
 	
+	\subsection{Results}
 	We proceeded to install the ATLAS software and compare the speeds of our code in step 3, the cache aware code, and ATLAS for multiplying two matrices. The results are presented in the following tables. \\
 	
 	
@@ -360,41 +362,53 @@ The information is summarized in the following table:
 	
 	We note that, as expected, we see speed ups in the multiplication time, which become more noticeable as we increase the block size and the block matrix size.
 	
+	\subsection{Requirement}
+	Basically same as section~\ref{requirement}. In addition:
+	\begin{enumerate}[(i)]
+	  \item In order to run step 2 code, type
+
+	    {\centering{\texttt{\$ make run TARGET=MMultiple2}}\par}
+
+	    change the number \texttt{2} to \texttt{3} or \texttt{4} to run step 3 or 4 instead.
+	  \item In order to run atlas, type
+
+	    {\centering \texttt{\$ make atlas LPATH=\textit{/path/to/atlaslib}}\par}
+
+	  \item \textbf{Block has to be square and the number of rows/columns of one block has to be a multiplicity of 8}.
+	\end{enumerate}
+
+	\renewcommand{\arraystretch}{1.5}
+
 	\section{Step 5}
+	The graphs are as follow:
+
+	\includegraphics{HPC25}
 	
-	We compared the new cache aware code to the code in step 3 on Mt.Moran running 16 threads and varying the block size and block matrix size. The results are presented in the following table. \\
+	The fixed size run times and speedup are based on block size $4096\times4096$, with matrix size $1\times1$ block. The dynamic size starts at block size $512\times512$, and matrix size $1\times1$ block. And the number of rows and number of columns of one block are both doubled when the thread number is doubled, while the matrix size is always $1\times1$ block.
 	
-	\begin{center}
-		
-		\begin{tabular}{ |p{2cm}| |p{2cm}||p{3cm}||p{3cm}|}
-			\hline
-			\multicolumn{4}{|c|}{Mt. Moran Multiplication Time} \\
-			\hline
-			Block Size &Block Matrix Size & Time (Step 3 Code) (seconds) & Time (Cache Aware)(seconds) \\
-			\hline
-			5000x5000 &  1x1& $9.592001$& $4.721680$  \\
-			
-			&  &  &\\
-			
-			1000x1000& 5x5 & $10.41214$& $6.816274$  \\ 
-			
-			& & & \\
-			
-			10000x10000 & 1x1 & $73.35776$& $34.13861$  \\
-			
-			
-			
-			
-			\hline
-		\end{tabular}
-		
-	\end{center}
-	
-	From this data, we can observe a considerable speed up between the code in step 3 and the new cache aware code, as desired. 
-	
-	\section{References}
-	
-	Goto, K. and van de Geijn, 2008. Anatomy of high-performance matrix multiplication. $\textit{ACM Transactions on  Mathematical Software}$ 24, 3 (May), article 12. 
-	
+	The speedup is based on MKL implementation. Table~\ref{tab:rt} shows the run times for MKL code and step 2 code. The matrix always contains only one block.
+	\begin{table}
+	  \centering
+	  \begin{tabular}{|l|c|c|c|c|c|c|}
+	    \hline
+	    & $512\times512$ & $1024\times1024$ & $2048\times2048$
+	    & $4096\times4096$ & $8192\times8192$ & $16384\times16384$\\
+	    \hline
+	    MKL & .0354595 & .1060209 & 1.003119 & 5.671681 & 44.08856 & 449.2986\\
+
+	    Step 2 & 1.286246 & 9.630381 & 292.011 & 2335.306 & \multicolumn{2}{c|}{Beyond Patience}\\
+	    \hline
+	  \end{tabular}
+	  \caption{Run time of MKL and step 2 codes.}
+	  \label{tab:rt}
+	\end{table}
+
+	\begin{thebibliography}{9}
+	  \bibitem{goto} 
+	    Goto, K.~and R.~A.~van de Geijn,
+	    \emph{Anatomy of high-performance matrix multiplication},
+	    ACM Transactions on Mathematical Software,
+	    2008
+	\end{thebibliography}
 \end{document}
 
