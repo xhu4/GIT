@@ -42,7 +42,7 @@ ZFILE = $(PROJECT).zip
 PACKFILES = Makefile matrices.h matrices.c $(MATRIX).c $(TARGET).c timer.c report.pdf
 
 
-all: 	$(MATRIX) $(TARGET) $(STARGET) $(ATLAS)
+all: 	$(MATRIX) $(TARGET) $(STARGET)
 
 matrix: $(MATRIX)
 	- ./$(MATRIX)
@@ -83,7 +83,7 @@ mkmatrices.o:	mkmatrices.c matrices.h Makefile
 
 
 clean:
-	- /bin/rm -f *.o $(TARGET) $(TFILE) $(ZFILE) $(STARGET)
+	- /bin/rm -f *.o $(TARGET) $(TFILE) $(ZFILE) $(STARGET) MMultiple MMultiple4 MMultiple2 $(MATRIX) $(STARGET)
 
 matrixclean:
 	- /bin/rm -f matrices.txt A*.bin B*.bin C*.bin
