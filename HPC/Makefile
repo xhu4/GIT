@@ -20,7 +20,7 @@
 ###############################################################################
 
 SHELL = /bin/sh
-PROJECT = G5hw2-3
+PROJECT = G5hw2-45
 
 ATLAS  = atlasmm
 MATRIX = mkmatrices
@@ -39,7 +39,7 @@ IPATH = /usr/local/atlas/include/
 
 TFILE = $(PROJECT).tgz
 ZFILE = $(PROJECT).zip
-PACKFILES = Makefile matrices.h matrices.c $(MATRIX).c $(TARGET).c timer.c report.pdf
+PACKFILES = Makefile matrices.h matrices.c $(MATRIX).c timer.c report.pdf MMultiple3.c MMultiple2.c MMultiple4.c
 
 
 all: 	$(MATRIX) $(TARGET) $(STARGET)

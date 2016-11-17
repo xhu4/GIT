@@ -18,7 +18,6 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include "mkmatrices.h"
 
 
 int main(){
@@ -60,17 +59,6 @@ int main(){
     double      mrun();         /* Get timing information */
 
 
-    /* Determine if generate A and B */
-    printf( "Generate A and B (yY or other)? " );
-    c = getchar();
-    fflush( stdout );    
-    opt_gen = c == 'y' || c == 'Y';
-    c = getchar();
-
-
-    /* Generate A and B by mkmatrices */
-    if ( opt_gen ) mkmatrices();
-
 
     /* Get matrix information from disk */
     matrix_info_read( &blk_rows, &blk_cols, 
@@ -86,10 +74,6 @@ int main(){
 
 
     /* Loop over every block */
-    printf("Do you want to print C (yY or other)?");
-    c = getchar();
-    fflush( stdout );
-    opt_print = c == 'y' || c == 'Y';
     t1 = mrun();
     for ( i= 0 ; i < crows ; i++ )
 	for ( j = 0 ; j < ccols ; j++ ) {
@@ -115,8 +99,9 @@ int main(){
 
     /* Time */
     t2 = mrun() - t1;
-    printf( "Matrices multiplication done in %le seconds\n"
-	    "Compute Time is %le seconds\n\n", t2, tc2 );
+    printf("\n|step2 code|\tblk:%5dx%5d, matrix:%2dx%2d, %2dThreads\n",blk_rows,blk_cols,arows,acols,1);
+    printf( "Total time:%les\n", t2);
+    printf("--------------------------------------------------------\n");
 
     /* End */
     return 0;
