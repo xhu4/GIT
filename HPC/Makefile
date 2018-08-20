@@ -44,6 +44,18 @@ PACKFILES = Makefile matrices.h matrices.c $(MATRIX).c timer.c report.pdf MMulti
 
 all: 	$(MATRIX) $(TARGET) $(STARGET)
 
+info:
+	@echo "You can run"
+	@echo "    \$$ make              - to compile and link all of the programs"
+	@echo "    \$$ make matrix       - to create matrix to calculate"
+	@echo "    \$$ make run          - to run the multiplication in parallel"
+	@echo "    \$$ make runerial     - to run the multiplication in serial"
+	@echo "    \$$ make clean        - to remove files related to making the example program"
+	@echo "    \$$ make matrixclean  - to remove the blocks of the matrices and the description"
+	@echo "                          of the matrices and block sizes"
+	@echo "    \$$ make distclean    - to try to get back to what the directory looked like"
+	@echo "                          when it was first created"
+
 matrix: $(MATRIX)
 	- ./$(MATRIX)
 	
